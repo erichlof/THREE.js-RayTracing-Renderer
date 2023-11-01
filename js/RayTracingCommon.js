@@ -69,25 +69,6 @@ float rng()
     	uint  n = 1103515245U * ( (q.x) ^ (q.y >> 3U) );
 	return float(n) * (1.0 / float(0xffffffffU));
 }
-/* 
-//the following alternative skips the creation of tangent and bi-tangent vectors T and B
-vec3 randomCosWeightedDirectionInHemisphere(vec3 nl)
-{
-	float z = rng() * 2.0 - 1.0;
-	float phi = rng() * TWO_PI;
-	float r = sqrt(1.0 - z * z);
-    	return normalize(nl + vec3(r * cos(phi), r * sin(phi), z));
-}
- */
-vec3 randomDirectionInSpecularLobe(vec3 reflectionDir, float roughness)
-{
-	float z = rng() * 2.0 - 1.0;
-	float phi = rng() * TWO_PI;
-	float r = sqrt(1.0 - z * z);
-    	vec3 cosDiffuseDir = normalize(reflectionDir + vec3(r * cos(phi), r * sin(phi), z));
-	return normalize( mix(reflectionDir, cosDiffuseDir, roughness * roughness) );
-}
-
 `;
 
 
@@ -166,6 +147,40 @@ void main( void )
 }
 `;
 
+
+THREE.ShaderChunk[ 'raytracing_lighting_models' ] = `
+vec3 doAmbientLighting(vec3 rayColorMask, float ambientIntensity, Material surfaceMaterial)
+{
+	vec3 ambientLighting = rayColorMask * surfaceMaterial.color;
+	ambientLighting *= ambientIntensity;
+	return ambientLighting;
+}
+
+vec3 doDiffuseDirectLighting(vec3 rayColorMask, vec3 surfaceNormal, vec3 directionToLight, vec3 lightColor, Material surfaceMaterial)
+{
+	vec3 diffuseLighting = rayColorMask * surfaceMaterial.color;
+	diffuseLighting *= lightColor;
+	// next, do typical Lambertian diffuse lighting (NdotL)
+	float diffuseFalloff = max(0.0, dot(surfaceNormal, directionToLight));
+	diffuseLighting *= diffuseFalloff;
+	return diffuseLighting;
+}
+
+vec3 doBlinnPhongSpecularLighting(vec3 rayColorMask, vec3 rayDirection, vec3 surfaceNormal, vec3 directionToLight, vec3 lightColor, Material surfaceMaterial)
+{
+	// for dielectric materials (non-conductors), specular color is unaffected by surface color
+	// for metal materials (conductors) however, specular color gets tinted by the metal surface color
+	// therefore, in the metal case, 'rayColorMask' will get pre-tinted before it is passed into this function
+	vec3 specularLighting = rayColorMask; // will either be white for dielectrics (usually vec3(1,1,1)), or tinted by metal color for metallics
+	specularLighting *= lightColor;
+	vec3 halfwayVector = normalize(-rayDirection + directionToLight); // this is Blinn's modification to Phong's model
+	float shininessExponent = 8.0 / max(0.001, surfaceMaterial.roughness * surfaceMaterial.roughness); // roughness squared produces smoother transition
+	float specularFalloff = pow(max(0.0, dot(surfaceNormal, halfwayVector)), shininessExponent); // this is a powered cosine with shininess as the exponent
+	specularLighting *= specularFalloff;
+	specularLighting *= (1.0 - surfaceMaterial.roughness); // makes specular highlights fade away as surface roughness increases
+	return specularLighting;
+}
+`;
 
 THREE.ShaderChunk[ 'raytracing_calc_fresnel_reflectance' ] = `
 float calcFresnelReflectance(vec3 rayDirection, vec3 n, float etai, float etat, out float IoR_ratio)
