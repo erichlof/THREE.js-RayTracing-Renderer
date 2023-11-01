@@ -116,7 +116,6 @@ vec3 RayTrace()
         vec3 geometryNormal, shadingNormal;
 	vec3 intersectionPoint;
 	vec3 directionToLight;
-	vec3 halfVector;
 	vec3 ambientContribution = vec3(0);
 	vec3 diffuseContribution = vec3(0);
 	vec3 specularContribution = vec3(0);
@@ -129,11 +128,8 @@ vec3 RayTrace()
 	float t = INFINITY;
 	float initial_t = INFINITY;
 	float ambientIntensity = 0.02;
-	float diffuseFalloff = 0.0;
-	float specularFalloff = 0.0;
-	float shininessExponent = 0.0;
 	float fogStart = 20.0;
-	float reflectance;
+	float reflectance, transmittance;
 	float IoR_ratio;
 	float transparentThickness;
 
@@ -257,9 +253,10 @@ vec3 RayTrace()
 			// Therefore, a shadow ray (i.e. a test ray) is created and sent out toward the light's position. If the shadow ray successfully hits the light source, 
 			// the Diffuse and Specular lighting may be added. If it fails to find the light source (another object is in the way), the surface is left in shadow with Ambient light only.
 			isShadowRay = TRUE;
+			// first we must nudge shadow ray origin out from the surface (along the surface normal) just a little bit, in order to avoid self-intersection on the next bounces loop iteration
 			rayOrigin = intersectionPoint + uEPS_intersect * shadingNormal;
-			rayDirection = directionToLight;
-			continue;
+			rayDirection = directionToLight; // all shadow rays go directly toward the light
+			continue; // continue next with shadow ray towards the light source
                 }
 		
                 if (intersectionMaterial.type == METAL)
@@ -268,17 +265,18 @@ vec3 RayTrace()
 			rayColorMask *= intersectionMaterial.color;
 
 			// Metals are purely specular with no diffuse component.
-			// Therefore, the Ambient (global diffuse) and Diffuse (direct diffuse) contributions are skipped.
-			
+			// Therefore, the Ambient (global bounced diffuse) and Diffuse (direct diffuse from light source) contributions are skipped.
+			// ambientContribution = NA
+			// diffuseContribution = NA
 			specularContribution = doBlinnPhongSpecularLighting(rayColorMask, rayDirection, shadingNormal, directionToLight, lightMaterial.color, intersectionMaterial);
 			// we could technically do a shadow ray test (to see if the light is visible), but in the interest of speed, we go ahead and add the Specular contribution.
 			accumulatedColor += specularContribution;
 
-			// set up a reflection ray to see the parts of the scene that are visible in the mirror-like reflection
+			// now spawn a reflection ray to see the parts of the scene that are visible in the mirror-like reflection
 			rayColorMask *= clamp(1.0 - (intersectionMaterial.roughness * 1.2), 0.001, 1.0);
-			rayOrigin = intersectionPoint + uEPS_intersect * shadingNormal;
+			rayOrigin = intersectionPoint + uEPS_intersect * shadingNormal; // nudge the new rayOrigin out from the surface to avoid self-intersection
 			rayDirection = reflect(rayDirection, shadingNormal);
-			continue;
+			continue; // continue ray tracing next with the mirror-reflection ray
 		}
 
 		if (intersectionMaterial.type == CHECKERED_CLEARCOAT)
@@ -294,85 +292,107 @@ vec3 RayTrace()
 
 		if (intersectionMaterial.type == CLEARCOAT_DIFFUSE)
 		{
+			// the following will decrease the ClearCoat IoR(shininess) as the roughness increases 
 			intersectionMaterial.IoR = mix(1.0, 1.5, clamp(1.0 - (intersectionMaterial.roughness * 1.2), 0.001, 1.0));
-			reflectance = calcFresnelReflectance(rayDirection, shadingNormal, 1.0, intersectionMaterial.IoR, IoR_ratio);
+			// reflectance (range: 0-1), given by the Fresnel equations, will tell us what fraction of the light is reflected, vs. what fraction is refracted(transmittance)
+			reflectance = calcFresnelReflectance(rayDirection, shadingNormal, 1.0, intersectionMaterial.IoR, IoR_ratio); // the fraction of light that is reflected,
+			transmittance = 1.0 - reflectance; // vs. the fraction of light that is transmitted
 
 			ambientContribution = doAmbientLighting(rayColorMask, ambientIntensity, intersectionMaterial);
+			ambientContribution *= transmittance; // the ambient reflections from the surface are transmitted through the ClearCoat material, so we must weight them accordingly
 			accumulatedColor += ambientContribution;
 
 			diffuseContribution = doDiffuseDirectLighting(rayColorMask, shadingNormal, directionToLight, lightMaterial.color, intersectionMaterial);
+			diffuseContribution *= transmittance; // the diffuse reflections from the surface are transmitted through the ClearCoat material, so we must weight them accordingly
 
 			specularContribution = doBlinnPhongSpecularLighting(rayColorMask, rayDirection, shadingNormal, directionToLight, lightMaterial.color, intersectionMaterial);
 
+			// If this ClearCoat type of material is the first thing that the camera ray encounters (bounces == 0), then setup and save a reflection ray for later use.
+			// After we've done that, first we'll send out the usual shadow ray to see if the Diffuse and Specular contributions can be added. Then once the shadow ray 
+			// is done testing for light visibility, we'll send out the saved reflection ray on its own trajectory, in order to capture reflections of the surrounding environment. 
 			if (bounces == 0)
 			{
 				willNeedReflectionRay = TRUE;
-				reflectionRayColorMask = rayColorMask * reflectance * clamp(1.0 - (intersectionMaterial.roughness * 1.2), 0.001, 1.0);
-				reflectionRayOrigin = intersectionPoint + uEPS_intersect * shadingNormal;
+				reflectionRayColorMask = rayColorMask * reflectance * clamp(1.0 - (intersectionMaterial.roughness * 1.2), 0.001, 1.0); // weight reflected ray with reflectance value we got
+				reflectionRayOrigin = intersectionPoint + uEPS_intersect * shadingNormal; // nudge the reflection rayOrigin out from the surface to avoid self-intersection
 				reflectionRayDirection = reflect(rayDirection, shadingNormal);
 			}
-			
+			// First, send out the usual shadow ray for the diffuse part of this surface. When that's done with its job, the reflection ray will take over.  
+			// The reflection ray above will start right back at this same spot on the surface, but will go off on its own mirror reflection trajectory.
 			isShadowRay = TRUE;
-			rayOrigin = intersectionPoint + uEPS_intersect * shadingNormal;
-			rayDirection = directionToLight;
-
-			continue;
+			rayOrigin = intersectionPoint + uEPS_intersect * shadingNormal; // nudge the shadow rayOrigin out from the surface to avoid self-intersection
+			rayDirection = directionToLight; // all shadow rays go directly toward the light
+			continue; // continue next with shadow ray towards the light source
 		}
 
 		if (intersectionMaterial.type == TRANSPARENT)
 		{
 			reflectance = calcFresnelReflectance(rayDirection, geometryNormal, 1.0, intersectionMaterial.IoR, IoR_ratio);
-
+			transmittance = 1.0 - reflectance;
+			// Ideal Transparent materials (like glass, water, clear plastic, etc.) are purely specular with no diffuse component.
+			// Therefore, the Ambient (global bounced diffuse) and Diffuse (direct diffuse from light source) contributions are skipped.
+			// ambientContribution = NA
+			// diffuseContribution = NA
 			specularContribution = doBlinnPhongSpecularLighting(rayColorMask, rayDirection, shadingNormal, directionToLight, lightMaterial.color, intersectionMaterial);
 			// shadow rays are only test rays and must not contribute any lighting of their own.
-			// So if (isShadowRay == TRUE), then we shut off the specular highlights.
+			// So if the current ray is a shadow ray (isShadowRay == TRUE), then we shut off the specular highlights.
 			specularContribution = (isShadowRay == TRUE) ? vec3(0) : specularContribution;
 			accumulatedColor += specularContribution;
 
+			// If this Transparent type of material is the first thing that the camera ray encounters (bounces == 0), then setup and save a reflection ray for later use.
+			// After we've done that, first we'll send out the refracted ray (transmitted ray) to find what parts of the scene we can see through the material. Then once the refraction
+			// (transmitted) ray is done with its work, we'll send out the saved reflection ray on its own trajectory, in order to capture reflections of the surrounding environment. 
+			// In the end, this will give us the photo-realistic double image (reflected portion & refracted portion) that we see on transparent materials like glass windows, water, plastic, etc.
 			if (bounces == 0)
 			{
 				willNeedReflectionRay = TRUE;
 				reflectionRayColorMask = rayColorMask * reflectance * clamp(1.0 - (intersectionMaterial.roughness * 1.2), 0.001, 1.0);
-				reflectionRayOrigin = intersectionPoint + uEPS_intersect * shadingNormal;
+				reflectionRayOrigin = intersectionPoint + uEPS_intersect * shadingNormal; // nudge the reflection rayOrigin out from the surface to avoid self-intersection
 				reflectionRayDirection = reflect(rayDirection, shadingNormal);
 			}
-			if (reflectance == 1.0) // total internal reflection has occured
+			if (reflectance == 1.0) // total internal reflection has occured, so all light is mirror reflection only (refraction/transmittance is physically impossible)
 			{
-				rayColorMask = reflectionRayColorMask;
-				rayOrigin = reflectionRayOrigin;
-				rayDirection = reflectionRayDirection;
+				rayColorMask = rayColorMask * reflectance * clamp(1.0 - (intersectionMaterial.roughness * 1.2), 0.001, 1.0); // weight reflected ray with reflectance value we got
+				rayOrigin = intersectionPoint + uEPS_intersect * shadingNormal; // nudge the reflection rayOrigin out from the surface to avoid self-intersection
+				rayDirection = reflect(rayDirection, shadingNormal);
 
 				willNeedReflectionRay = FALSE;
 				isShadowRay = FALSE;
-				continue; // go ahead and trace reflection ray now
+				continue; // abandon transmitted ray(below) and go ahead and trace reflection ray now
 			}
+
+			// This part of the code handles the transmitted portion of the Transparent surface
 
 			// is ray leaving a solid object from the inside? 
 			// If so, attenuate ray color with object color by how far ray has travelled through the object's interior
 			if (distance(geometryNormal, shadingNormal) > 0.1)
 			{
 				transparentThickness = 0.2;
+				// the following uses Beer's Law to attenuate the light energy (brightness and color saturation) by how far it had to travel through the transparent material.
+				// If the material is very thin, like thin glass or a shallow puddle of colored water, the transmitted light will still be bright, but will not pick up very much of the material's color.
+				// As the material gets thicker, like thick glass or a deep pool of colored water, the transmitted light will lose more energy (darker) and will take on much more of the material's color.
 				rayColorMask *= exp( log(clamp(intersectionMaterial.color, 0.01, 0.99)) * transparentThickness * t ); 
 			}
-			
-			rayColorMask *= (1.0 - reflectance);
+			// the refraction through the surface only accounts for the portion of light that is transmitted, so we must weight it accordingly (Reflectance vs. Transmittance)
+			rayColorMask *= transmittance;
 			rayColorMask *= clamp(1.0 - (intersectionMaterial.roughness * 1.2), 0.001, 1.0);
 
-			if (isShadowRay == FALSE) // do usual refraction
+			if (isShadowRay == FALSE) // do usual refraction - this happens most of the time
 			{
+				// note the minus(-) sign below, which nudges the rayOrigin below the surface along the normal, instead of above it (like for usual bounced reflections) 
 				rayOrigin = intersectionPoint - uEPS_intersect * shadingNormal;
-				rayDirection = refract(rayDirection, shadingNormal, IoR_ratio);
+				rayDirection = refract(rayDirection, shadingNormal, IoR_ratio); // ray is now refracted according to Snell's Law
 			}
-			else // special case: shadow rays are allowed to penetrate un-refracted, in order to generate 'shadow' caustics
+			else // special case: shadow rays are allowed to penetrate un-refracted, in order to generate 'shadow' caustics (a clever technique found in the Hall Lighting Model)
 			{
-				diffuseContribution *= intersectionMaterial.color;
-				diffuseContribution *= (1.0 - reflectance);
+				diffuseContribution *= intersectionMaterial.color; // color future-generated caustics with the transparent material color
+				diffuseContribution *= transmittance; // the light that generated the caustics only accounts for the transmitted portion, so weight accordingly
 				diffuseContribution *= clamp(1.0 - (intersectionMaterial.roughness * 1.2), 0.001, 1.0);
-				rayOrigin = intersectionPoint + uEPS_intersect * rayDirection; // nudge through surface to avoid self-intersection
+				rayOrigin = intersectionPoint + uEPS_intersect * rayDirection; // nudge through surface along current rayDirection to avoid self-intersection
 				rayDirection = rayDirection; // ray direction is unchanged and is allowed to pass through (un-refracted)
 			}
 			
-			continue;
+			continue; // continue ray tracing next with the refracted(or transmitted) ray
 		}
 		
 	} // end for (int bounces = 0; bounces < 5; bounces++)
@@ -381,6 +401,7 @@ vec3 RayTrace()
 	if (initial_t < INFINITY)
 	{
 		initial_t -= fogStart; // this makes the fog start a little farther away from the camera
+		// the following is a standard fog/atmosphere blending into the distance (aerial perspective), using Beer's Law
 		accumulatedColor = mix(initialSkyColor, accumulatedColor, clamp(exp(-initial_t * 0.001), 0.0, 1.0));
 	}
 		
