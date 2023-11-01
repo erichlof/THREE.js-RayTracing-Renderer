@@ -26,13 +26,13 @@ function initSceneData()
 	//focusChangeSpeed = 1; // 1 is default
 
 	// position and orient camera
-	cameraControlsObject.position.set(3, 3, 25);
+	cameraControlsObject.position.set(3, 5, 25);
 	// look left or right
 	cameraControlsYawObject.rotation.y = 0.3;
 	// look up or down
 	cameraControlsPitchObject.rotation.x = 0.005;
 
-	cameraFlightSpeed = 50;
+	cameraFlightSpeed = 30;
 
 	// In addition to the default GUI on all demos, add any special GUI elements that this particular demo requires
 	material_RoughnessObject = { Material_Roughness: 0.0 };
