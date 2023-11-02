@@ -21,7 +21,7 @@ function initSceneData()
 
 	// set camera's field of view and other options
 	worldCamera.fov = 60;
-	focusDistance = 17.0;
+	focusDistance = 20.0;
 	//apertureChangeSpeed = 1; // 1 is default
 	//focusChangeSpeed = 1; // 1 is default
 
