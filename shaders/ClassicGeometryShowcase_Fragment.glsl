@@ -135,62 +135,61 @@ vec3 RayTrace()
 
 	int isShadowRay = FALSE;
 	int willNeedReflectionRay = FALSE;
-	int previousIntersectionMaterialType;
-	
-	intersectionMaterial.type = -100;
+	//int previousIntersectionMaterialType;
+	//intersectionMaterial.type = -100;
 
+	// For the kind of ray tracing we're doing, 5 or 6 bounces is enough to do all the reflections and refractions that are most clearly noticeable.
+	// You might be able to get away with 4 bounces if on a mobile budget, or crank it up to 7/8 bounces if your scene has a bunch of mirrors or glass objects.
 
 	for (int bounces = 0; bounces < 5; bounces++)
 	{
-		previousIntersectionMaterialType = intersectionMaterial.type;
-
+		//previousIntersectionMaterialType = intersectionMaterial.type;
+		// the following tests for intersections with the entire scene, then reports back the closest object (min t value)
 		t = SceneIntersect( isShadowRay );
-
+		// on the 1st bounce only, record the initial t value - will be used later when applying fog/atmosphere blending
 		initial_t = bounces == 0 ? t : initial_t;
 
-		if (t == INFINITY)
+		if (t == INFINITY) // ray has missed all objects and hit the background sky
 		{
-			if (bounces == 0)
+			if (bounces == 0) // if this is the initial camera ray, just draw the sky and exit
 			{
 				accumulatedColor = initialSkyColor;
 				break;
 			}
-			
-			skyColor = getSkyColor(rayDirection);
+			// else this is a reflection/refraction ray that has hit the background sky
+			skyColor = getSkyColor(rayDirection); // must get a fresh skyColor value, because the reflected ray is pointing in different direction
 
 			accumulatedColor += rayColorMask * skyColor;
 			//accumulatedColor += diffuseContribution;
-			accumulatedColor += specularContribution;
+			///accumulatedColor += specularContribution;
 
+			// now that the initial camera ray has completed its journey, we can spawn the saved reflectionRay to gather reflections from shiny surfaces.
 			if (willNeedReflectionRay == TRUE)
 			{
-				rayColorMask = reflectionRayColorMask;
-				rayOrigin = reflectionRayOrigin;
-				rayDirection = reflectionRayDirection;
-				willNeedReflectionRay = FALSE;
-				isShadowRay = FALSE;
-				continue;
+				rayColorMask = reflectionRayColorMask; // this was the ray color at the time of branching between transmitted and reflected rays  
+				rayOrigin = reflectionRayOrigin; // this is the saved reflection ray origin back at the surface location before branching occured
+				rayDirection = reflectionRayDirection; // this was the saved reflection direction of the ray at the reflective surface location
+				willNeedReflectionRay = FALSE; // we just set up the reflection ray, so we can turn this flag off
+				isShadowRay = FALSE; // this is a reflection ray, not a shadow ray
+				continue; // continue next with this reflection ray's own path
 			}
-
+			// if we get here, we've done all the bounces/reflections that we can do, so exit
 			break;
 		}
 
 		
 		if (intersectionMaterial.type == POINT_LIGHT)
 		{	
-			if (bounces == 0)
+			if (bounces == 0) // if this is the initial camera ray, set it to the light color
 				accumulatedColor = lightMaterial.color;
-			else
-			{
-				accumulatedColor += specularContribution;
-			}
 
-			if (isShadowRay == TRUE)
-			{
-				accumulatedColor += diffuseContribution;
-				//accumulatedColor += specularContribution;// already done above
+			if (isShadowRay == TRUE) // the shadow ray was successful, so we know we can see the light from the surface where the shadow ray
+			{			//  emerged from - therefore, the direct diffuse lighting and specular lighting can be added to that surface.
+				accumulatedColor += diffuseContribution; // diffuse direct lighting
+				accumulatedColor += specularContribution; // bright specular highlights
 			}
-			
+			// if the shadow ray that reached the light source was from a ClearCoat Diffuse object, after adding its diffuse color and specular highlights (above),
+			// we need to rewind back to the surface and then follow the reflection ray path, in order to gather the mirror reflections on the shiny clearcoat.
 			if (willNeedReflectionRay == TRUE)
 			{
 				rayColorMask = reflectionRayColorMask;
@@ -201,14 +200,16 @@ vec3 RayTrace()
 				continue;
 			}
 			
-			// reached a light source, so we can exit
+			// if we get here, we've done all the bounces/reflections that we can do, so exit
 			break;
 		}
 
-		// if we get here and isShadowRay == TRUE, that means the shadow ray failed to find
-		// the light source. This surface will be rendered in shadow (ambient contribution only)
+		// if we get here and isShadowRay == TRUE still, that means the shadow ray failed to find the light source
+		//  (another object was in the way of the light). This surface will be rendered in shadow (ambient contribution only)
 		if (isShadowRay == TRUE && intersectionMaterial.type != TRANSPARENT)
 		{
+			// if the shadow ray failed, we can still rewind back to the surface of a shiny object (either ClearCoat or Transparent)
+			// and follow the saved reflectionRay path to gather the mirror reflections in the clearcoat
 			if (willNeedReflectionRay == TRUE)
 			{
 				rayColorMask = reflectionRayColorMask;
@@ -224,17 +225,21 @@ vec3 RayTrace()
 		}
 
 		// useful data 
-		geometryNormal = normalize(intersectionNormal);
-                shadingNormal = dot(geometryNormal, rayDirection) < 0.0 ? geometryNormal : -geometryNormal;
-		intersectionPoint = rayOrigin + t * rayDirection;
-		directionToLight = normalize(spheres[0].position - intersectionPoint);
+		// there are 2 types of surface normals that we must handle in all ray tracers - the geometry normal and the shading normal.
+		// The geometery normal is simply the original, unaltered surface normal from the shape or triangle mesh.  However, while doing shading, all normals must point at the ray
+		// (in the opposing direction to the rayDirection), so that's when the shading normal comes in. The shading normal starts out as an exact copy of the geometry normal, but
+		// if it is determined that the shading normal is pointing in the same direction as the ray (or nearly the same), it means the normal is on the wrong side and we must flip it (negate it)
+		geometryNormal = normalize(intersectionNormal); // geometry normals are the unaltered normals from the intersected shape definition / or from the triangle mesh data
+                shadingNormal = dot(geometryNormal, rayDirection) < 0.0 ? geometryNormal : -geometryNormal; // if geometry normal is pointing in the same manner as ray, must flip the shading normal (negate it) 
+		intersectionPoint = rayOrigin + t * rayDirection; // use the ray equation to find intersection point (P = O + tD)
+		directionToLight = normalize(spheres[0].position - intersectionPoint); // this vector now points from the intersected surface up to the light (spheres[0]) position
 
-		
+		// if the intersection material has a valid texture ID (> -1), go ahead and sample the texture at the hit material's UV coordinates
 		if (intersectionMaterial.textureID > -1)
 		{
 			textureColor = texture(uUVGridTexture, intersectionUV).rgb;
-			textureColor *= textureColor;
-			intersectionMaterial.color *= textureColor;
+			textureColor *= textureColor; // remove image gamma by raising texture color to the power of 2.2 (but squaring is close enough and cheaper)
+			intersectionMaterial.color *= textureColor; // now that the texture color is in linear space, we can do simple math with it, like multiplying and adding
 		}
 		
                 if (intersectionMaterial.type == PHONG)
@@ -401,7 +406,7 @@ vec3 RayTrace()
 	if (initial_t < INFINITY)
 	{
 		initial_t -= fogStart; // this makes the fog start a little farther away from the camera
-		// the following is a standard fog/atmosphere blending into the distance (aerial perspective), using Beer's Law
+		// the following is the standard blending of objects with fog/atmosphere as they recede into the distance, using Beer's Law
 		accumulatedColor = mix(initialSkyColor, accumulatedColor, clamp(exp(-initial_t * 0.001), 0.0, 1.0));
 	}
 		
