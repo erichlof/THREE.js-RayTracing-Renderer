@@ -145,7 +145,7 @@ vec3 RayTrace()
 	for (int bounces = 0; bounces < 5; bounces++)
 	{
 		//previousIntersectionMaterialType = intersectionMaterial.type;
-		
+
 		// the following tests for intersections with the entire scene, then reports back the closest object (min t value)
 		t = SceneIntersect( isShadowRay );
 		// on the 1st bounce only, record the initial t value - will be used later when applying fog/atmosphere blending
@@ -162,8 +162,6 @@ vec3 RayTrace()
 			skyColor = getSkyColor(rayDirection); // must get a fresh skyColor value, because the reflected ray is pointing in different direction
 
 			accumulatedColor += rayColorMask * skyColor;
-			//accumulatedColor += diffuseContribution;
-			///accumulatedColor += specularContribution;
 
 			// now that the initial camera ray has completed its journey, we can spawn the saved reflectionRay to gather reflections from shiny surfaces.
 			if (willNeedReflectionRay == TRUE)
@@ -356,14 +354,13 @@ vec3 RayTrace()
 				reflectionRayOrigin = intersectionPoint + uEPS_intersect * shadingNormal; // nudge the reflection rayOrigin out from the surface to avoid self-intersection
 				reflectionRayDirection = reflect(rayDirection, shadingNormal);
 			}
-			if (reflectance == 1.0) // total internal reflection has occured, so all light is mirror reflection only - because refraction/transmittance is physically impossible for this viewing angle
+			if (reflectance == 1.0 && isShadowRay == FALSE) // total internal reflection occured - all light is mirror reflection only, because refraction/transmittance is physically impossible for this viewing angle
 			{
 				rayColorMask = rayColorMask * reflectance * clamp(1.0 - (intersectionMaterial.roughness * 1.2), 0.001, 1.0); // weight reflected ray with reflectance value we got
 				rayOrigin = intersectionPoint + uEPS_intersect * shadingNormal; // nudge the reflection rayOrigin out from the surface to avoid self-intersection
 				rayDirection = reflect(rayDirection, shadingNormal);
 
 				willNeedReflectionRay = FALSE;
-				isShadowRay = FALSE;
 				continue; // abandon transmitted ray(below) and go ahead and trace reflection ray now
 			}
 
@@ -392,7 +389,7 @@ vec3 RayTrace()
 			else // special case: shadow rays are allowed to penetrate transparent surfaces un-refracted, in order to generate 'shadow' caustics (a clever technique found in the Hall Lighting Model)
 			{
 				diffuseContribution *= intersectionMaterial.color; // color future-generated caustics with the transparent material color
-				diffuseContribution *= transmittance; // the light that generates the caustics only accounts for the transmitted portion, so weight accordingly
+				diffuseContribution *= max(0.2, transmittance); // the light that generates the caustics only accounts for the transmitted portion, so weight it accordingly
 				diffuseContribution *= clamp(1.0 - (intersectionMaterial.roughness * 1.2), 0.001, 1.0); // inverse relationship: as roughness increases, caustics brightness decreases
 				rayOrigin = intersectionPoint + uEPS_intersect * rayDirection; // nudge the caustics rayOrigin through the surface along the same rayDirection to avoid self-intersection
 				rayDirection = rayDirection; // ray direction is unchanged - the caustics ray is allowed to pass through (un-refracted)
