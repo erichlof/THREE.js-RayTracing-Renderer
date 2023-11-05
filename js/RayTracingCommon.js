@@ -100,8 +100,11 @@ void main( void )
 	
 	// pixelOffset = vec2( tentFilter(uRandomVec2.x), tentFilter(uRandomVec2.y) );
 	// pixelOffset *= uCameraIsMoving ? 0.5 : 1.0;
-	if (uCameraIsMoving)
-		pixelOffset = vec2( tentFilter(rand()), tentFilter(rand()) ) * 0.5;
+	if (uSampleCounter < 100.0)
+	{
+		pixelOffset = vec2( tentFilter(rand()), tentFilter(rand()) );
+		pixelOffset *= uCameraIsMoving ? 0.5 : 1.0;
+	}	
 	else pixelOffset = vec2( tentFilter(uRandomVec2.x), tentFilter(uRandomVec2.y) );
 	
 	// we must map pixelPos into the range -1.0 to +1.0: (-1.0,-1.0) is bottom-left screen corner, (1.0,1.0) is top-right
@@ -156,12 +159,12 @@ vec3 doAmbientLighting(vec3 rayColorMask, float ambientIntensity, Material surfa
 	return ambientLighting;
 }
 
-vec3 doDiffuseDirectLighting(vec3 rayColorMask, vec3 surfaceNormal, vec3 directionToLight, vec3 lightColor, Material surfaceMaterial)
+vec3 doDiffuseDirectLighting(vec3 rayColorMask, vec3 surfaceNormal, vec3 directionToLight, vec3 lightColor, Material surfaceMaterial, out float diffuseFalloff)
 {
 	vec3 diffuseLighting = rayColorMask * surfaceMaterial.color;
 	diffuseLighting *= lightColor;
 	// next, do typical Lambertian diffuse lighting (NdotL)
-	float diffuseFalloff = max(0.0, dot(surfaceNormal, directionToLight));
+	diffuseFalloff = max(0.0, dot(surfaceNormal, directionToLight));
 	diffuseLighting *= diffuseFalloff;
 	return diffuseLighting;
 }
@@ -178,7 +181,7 @@ vec3 doBlinnPhongSpecularLighting(vec3 rayColorMask, vec3 rayDirection, vec3 sur
 	float specularFalloff = pow(max(0.0, dot(surfaceNormal, halfwayVector)), shininessExponent); // this is a powered cosine with shininess as the exponent
 	specularLighting *= specularFalloff;
 	specularLighting *= (1.0 - surfaceMaterial.roughness); // makes specular highlights fade away as surface roughness increases
-	return specularLighting;
+	return mix(vec3(0), specularLighting, max(0.0, dot(surfaceNormal, directionToLight)));
 }
 `;
 
@@ -205,7 +208,39 @@ float calcFresnelReflectance(vec3 rayDirection, vec3 n, float etai, float etat, 
 }
 `;
 
+THREE.ShaderChunk[ 'raytracing_calc_UV_coordinates' ] = `
+vec2 calcSphereUV(vec3 pointOnSphere, float sphereRadius, vec3 spherePosition)
+{
+	vec3 normalizedPoint = pointOnSphere - spherePosition;
+	normalizedPoint *= (1.0 / sphereRadius);
+	float phi = atan(-normalizedPoint.z, normalizedPoint.x);
+	float theta = acos(normalizedPoint.y);
+	float u = phi * ONE_OVER_TWO_PI + 0.5;
+	float v = theta * ONE_OVER_PI;
+	return vec2(u, v);
+}
 
+vec2 calcUnitSphereUV(vec3 pointOnUnitSphere)
+{
+	float phi = atan(-pointOnUnitSphere.z, pointOnUnitSphere.x);
+	float theta = acos(pointOnUnitSphere.y);
+	float u = phi * ONE_OVER_TWO_PI + 0.5;
+	float v = theta * ONE_OVER_PI;
+	return vec2(u, v);
+}
+
+vec2 calcCylinderUV(vec3 pointOnCylinder, float cylinderHeightRadius, vec3 cylinderPosition)
+{
+	vec3 normalizedPoint = pointOnCylinder - cylinderPosition;
+	// must compute theta before normalizing the intersection point
+	float theta = normalizedPoint.y / (cylinderHeightRadius * 2.0);
+	normalizedPoint = normalize(normalizedPoint);
+	float phi = atan(-normalizedPoint.z, normalizedPoint.x);
+	float u = phi * ONE_OVER_TWO_PI + 0.5;
+	float v = -theta + 0.5; // -theta flips upside-down texture images
+	return vec2(u, v);
+}
+`;
 
 THREE.ShaderChunk[ 'raytracing_plane_intersect' ] = `
 //-----------------------------------------------------------------------
@@ -293,12 +328,12 @@ float RectangleIntersect( vec3 pos, vec3 normal, vec3 vectorU, vec3 vectorV, flo
 
 	if (t > 0.0) 
 	{
-		u = dot(hit, vectorU) / radiusU;
-		v = dot(hit, vectorV) / radiusV;
+		u = dot(hit, vectorU) / radiusU; // bring u into the range: -1 to +1
+		v = dot(hit, vectorV) / radiusV; // bring v into the range: -1 to +1
 		if (abs(u) <= 1.0 && abs(v) <= 1.0)
 		{
-			u = u * 0.5 + 0.5;
-			v = v * 0.5 + 0.5;
+			u = u * 0.5 + 0.5; // finally, bring u into the 0.0-1.0 range, for texture lookups
+			v = v * 0.5 + 0.5; // finally, bring v into the 0.0-1.0 range, for texture lookups
 			return t;
 		}	
 	} 
@@ -420,6 +455,43 @@ float UnitSphereIntersect( vec3 ro, vec3 rd, out vec3 n )
 	}
 
 	return 0.0;
+}
+`;
+
+THREE.ShaderChunk[ 'raytracing_cylinder_intersect' ] = `
+
+float CylinderIntersect( float widthRadius, float heightRadius, vec3 position, vec3 rayO, vec3 rayD, out vec3 normal )
+{
+	vec3 hitPoint;
+	vec3 L = rayO - position;
+	float t0, t1;
+	// Cylinder implicit equation
+	// X^2 + Z^2 - r^2 = 0
+	float a = (rayD.x * rayD.x) + (rayD.z * rayD.z);
+	float b = 2.0 * ((rayD.x * L.x) + (rayD.z * L.z));
+	float c = (L.x * L.x) + (L.z * L.z) - (widthRadius * widthRadius);
+
+	solveQuadratic(a, b, c, t0, t1);
+
+	hitPoint = rayO + t0 * rayD;
+	if (t0 > 0.0 && hitPoint.y > (position.y - heightRadius) && hitPoint.y < (position.y + heightRadius))
+	{
+		normal = hitPoint - position;
+		normal.y = 0.0;
+		normal *= dot(normal, rayD) > 0.0 ? -1.0 : 1.0;
+		return t0;
+	}
+
+	hitPoint = rayO + t1 * rayD;
+	if (t1 > 0.0 && hitPoint.y > (position.y - heightRadius) && hitPoint.y < (position.y + heightRadius))
+	{
+		normal = hitPoint - position;
+		normal.y = 0.0;
+		normal *= dot(normal, rayD) > 0.0 ? -1.0 : 1.0;
+		return t1;
+	}
+
+	return INFINITY;
 }
 `;
 
