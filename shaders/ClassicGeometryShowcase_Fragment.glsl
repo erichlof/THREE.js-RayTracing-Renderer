@@ -17,10 +17,10 @@ vec3 intersectionNormal;
 vec2 intersectionUV;
 int intersectionTextureID;
 
-struct Material { int type; vec3 color; float roughness; float IoR; int textureID; vec2 uvScale; };
-struct Rectangle { vec3 position; vec3 normal; vec3 vectorU; vec3 vectorV; float radiusU; float radiusV; Material material; };
-struct Box { vec3 minCorner; vec3 maxCorner; Material material; };
-struct Sphere { float radius; vec3 position; Material material; };
+struct Material { int type; vec3 color; float roughness; float IoR; int textureID; };
+struct Rectangle { vec3 position; vec3 normal; vec3 vectorU; vec3 vectorV; float radiusU; float radiusV; vec2 uvScale; Material material; };
+struct Box { vec3 minCorner; vec3 maxCorner; vec2 uvScale; Material material; };
+struct Sphere { float radius; vec3 position; vec2 uvScale; Material material; };
 
 Material intersectionMaterial;
 Rectangle rectangles[N_RECTANGLES];
@@ -42,6 +42,7 @@ Sphere spheres[N_SPHERES];
 
 #include <raytracing_sphere_intersect>
 
+#include <raytracing_calc_UV_coordinates>
 
 //---------------------------------------------------------------------------------------
 float SceneIntersect( int isShadowRay )
@@ -49,7 +50,7 @@ float SceneIntersect( int isShadowRay )
 {
 	
 	vec3 rObjOrigin, rObjDirection; 
-	vec3 normal;
+	vec3 intersectionPoint, normal;
         float d;
 	float t = INFINITY;
 	float u, v;
@@ -78,7 +79,7 @@ float SceneIntersect( int isShadowRay )
 			t = d;
 			intersectionNormal = rectangles[i].normal;
 			intersectionMaterial = rectangles[i].material;
-			intersectionUV = vec2(u, v) * intersectionMaterial.uvScale;
+			intersectionUV = vec2(u, v) * rectangles[i].uvScale;
 		}
 	}
 	
@@ -88,8 +89,10 @@ float SceneIntersect( int isShadowRay )
 		if (d < t)
 		{
 			t = d;
+			intersectionPoint = rayOrigin + t * rayDirection;
 			intersectionNormal = (rayOrigin + t * rayDirection) - spheres[i].position;
 			intersectionMaterial = spheres[i].material;
+			intersectionUV = calcSphereUV(intersectionPoint, spheres[i].radius, spheres[i].position) * spheres[i].uvScale;
 		}
 	}
 
@@ -107,15 +110,15 @@ vec3 getSkyColor(vec3 rayDir)
 vec3 RayTrace()
 //-------------------------------------------------------------------------------------------
 {
-        Material lightMaterial = spheres[0].material;
-
+        Material pointLightMaterial = spheres[0].material;
+	vec3 lightColor = pointLightMaterial.color; // or sunlightColor
 	vec3 accumulatedColor = vec3(0); // this will hold the final raytraced color for this pixel
         vec3 rayColorMask = vec3(1); // all rays start out un-tinted pure white (vec3(1)) - no color tinting, yet
 	vec3 reflectionRayOrigin, reflectionRayDirection; // these rays will be used to capture surface reflections from the surrounding environment
 	vec3 reflectionRayColorMask;
         vec3 geometryNormal, shadingNormal;
 	vec3 intersectionPoint;
-	vec3 directionToLight;
+	vec3 directionToLight, directionToSunlight;
 	vec3 ambientContribution = vec3(0);
 	vec3 diffuseContribution = vec3(0);
 	vec3 specularContribution = vec3(0);
@@ -129,20 +132,22 @@ vec3 RayTrace()
 	float t = INFINITY;
 	float initial_t = INFINITY;
 	float ambientIntensity = 0.02;
-	float fogStart = 20.0;
+	float diffuseFalloff;
+	float fogStart;
 	float reflectance, transmittance;
 	float IoR_ratio;
 	float transparentThickness;
 
 	int isShadowRay = FALSE;
 	int willNeedReflectionRay = FALSE;
+	int sceneUsesDirectionalLight = FALSE;
 	//int previousIntersectionMaterialType;
 	//intersectionMaterial.type = -100;
 
-	// For the kind of ray tracing we're doing, 5 or 6 bounces is enough to do all the reflections and refractions that are most clearly noticeable.
-	// You might be able to get away with 4 bounces if on a mobile budget, or crank it up to 7/8 bounces if your scene has a bunch of mirrors or glass objects.
+	// For the kind of ray tracing we're doing, 6 or 7 bounces is enough to do all the reflections and refractions that are most clearly noticeable.
+	// You might be able to get away with 5 bounces if on a mobile budget, or crank it up to 8/9 bounces if your scene has a bunch of mirrors or glass objects.
 
-	for (int bounces = 0; bounces < 5; bounces++)
+	for (int bounces = 0; bounces < 6; bounces++)
 	{
 		//previousIntersectionMaterialType = intersectionMaterial.type;
 
@@ -180,13 +185,20 @@ vec3 RayTrace()
 		
 		if (intersectionMaterial.type == POINT_LIGHT)
 		{	
-			if (bounces == 0) // if this is the initial camera ray, set it to the light color
-				accumulatedColor = lightMaterial.color;
-
+			if (bounces == 0) // if this is the initial camera ray, set it to the light's color and exit 
+			{
+				accumulatedColor = pointLightMaterial.color;
+				break;
+			}	
+				
 			if (isShadowRay == TRUE) // the shadow ray was successful, so we know we can see the light from the surface where the shadow ray
 			{			//  emerged from - therefore, the direct diffuse lighting and specular lighting can be added to that surface.
 				accumulatedColor += diffuseContribution; // diffuse direct lighting
 				accumulatedColor += specularContribution; // bright specular highlights
+			}
+			else
+			{
+				accumulatedColor += rayColorMask * pointLightMaterial.color;
 			}
 			// if the shadow ray that reached the light source was from a ClearCoat Diffuse object, after adding its diffuse color and specular highlights (above),
 			// we need to rewind back to the surface and then follow the reflection ray path, in order to gather the mirror reflections on the shiny clearcoat.
@@ -208,6 +220,8 @@ vec3 RayTrace()
 		//  (another object was in the way of the light). This surface will be rendered in shadow (ambient contribution only)
 		if (isShadowRay == TRUE && intersectionMaterial.type != TRANSPARENT)
 		{
+			accumulatedColor += ambientContribution; // add ambient light only - this surface will be left in shadow (no direct diffuse or specular light)
+
 			// if the shadow ray failed, we can still rewind back to the surface of a shiny object (either ClearCoat or Transparent)
 			// and follow the saved reflectionRay path to gather the mirror reflections in the clearcoat
 			if (willNeedReflectionRay == TRUE)
@@ -232,7 +246,8 @@ vec3 RayTrace()
 		geometryNormal = normalize(intersectionNormal); // geometry normals are the unaltered normals from the intersected shape definition / or from the triangle mesh data
                 shadingNormal = dot(geometryNormal, rayDirection) < 0.0 ? geometryNormal : -geometryNormal; // if geometry normal is pointing in the same manner as ray, must flip the shading normal (negate it) 
 		intersectionPoint = rayOrigin + t * rayDirection; // use the ray equation to find intersection point (P = O + tD)
-		directionToLight = normalize(spheres[0].position - intersectionPoint); // this vector now points from the intersected surface up to the light (spheres[0]) position
+		// the directionToLight vector will point from the intersected surface either towards the Sun, or up to the point light position
+		directionToLight = (sceneUsesDirectionalLight == TRUE) ? directionToSunlight : normalize(spheres[0].position - intersectionPoint);
 
 		// if the intersection material has a valid texture ID (> -1), go ahead and sample the texture at the hit material's UV coordinates
 		if (intersectionMaterial.textureID > -1)
@@ -247,11 +262,11 @@ vec3 RayTrace()
 			// Phong's original lighting model consists of 3 components - Ambient, Diffuse, and Specular contributions.
 			// Ambient is an old 'hack' to cheaply simulate the effect of soft, diffuse bounce lighting (Global Illumination)
 			ambientContribution = doAmbientLighting(rayColorMask, ambientIntensity, intersectionMaterial);
-			accumulatedColor += ambientContribution; // ambient light is always present, so go ahead and add it now
 			// Diffuse is the typical Lambertian lighting (NdotL) that arrives directly from the light source - this gives non-metallic surfaces their color & gradient shading
-			diffuseContribution = doDiffuseDirectLighting(rayColorMask, shadingNormal, directionToLight, lightMaterial.color, intersectionMaterial);
+			diffuseContribution = doDiffuseDirectLighting(rayColorMask, shadingNormal, directionToLight, lightColor, intersectionMaterial, diffuseFalloff);
+			diffuseContribution = mix(ambientContribution, diffuseContribution, diffuseFalloff);
 			// Specular is the bright highlight on shiny surfaces, resulting from a direct reflection of the light source itself
-			specularContribution = doBlinnPhongSpecularLighting(rayColorMask, rayDirection, shadingNormal, directionToLight, lightMaterial.color, intersectionMaterial);
+			specularContribution = doBlinnPhongSpecularLighting(rayColorMask, rayDirection, shadingNormal, directionToLight, lightColor, intersectionMaterial);
 			// when all 3 components (Ambient, Diffuse, and Specular) have been calculated, they are just simply added up to give the final lighting.
 			// Since Ambient lighting (global) is always present no matter what, it was immediately added a couple lines above.
 			// However, in order to add the Diffuse and Specular lighting contributions, we must be able to 'see' the light source from the surface's perspective.
@@ -273,7 +288,7 @@ vec3 RayTrace()
 			// Therefore, the Ambient (global bounced diffuse) and Diffuse (direct diffuse from light source) contributions are skipped.
 			// ambientContribution = NA
 			// diffuseContribution = NA
-			specularContribution = doBlinnPhongSpecularLighting(rayColorMask, rayDirection, shadingNormal, directionToLight, lightMaterial.color, intersectionMaterial);
+			specularContribution = doBlinnPhongSpecularLighting(rayColorMask, rayDirection, shadingNormal, directionToLight, lightColor, intersectionMaterial);
 			// we could technically do a shadow ray test (to see if the light is visible), but in the interest of speed, we go ahead and add the Specular contribution.
 			accumulatedColor += specularContribution;
 
@@ -298,18 +313,18 @@ vec3 RayTrace()
 		if (intersectionMaterial.type == CLEARCOAT_DIFFUSE)
 		{
 			// the following will decrease the IndexOfRefracton, or IoR(shininess) of the clear coating as the roughness increases 
-			intersectionMaterial.IoR = mix(1.0, 1.5, clamp(1.0 - (intersectionMaterial.roughness * 1.2), 0.001, 1.0)); // as roughness increases, the IndexOfRefraction(shininess/brightness) decreases
+			intersectionMaterial.IoR = mix(1.0, intersectionMaterial.IoR, clamp(1.0 - (intersectionMaterial.roughness * 1.2), 0.001, 1.0)); // as roughness increases, the IndexOfRefraction(shininess/brightness) decreases
 			// reflectance (range: 0-1), given by the Fresnel equations, will tell us what fraction of the light is reflected(reflectance), vs. what fraction is refracted(transmittance)
 			reflectance = calcFresnelReflectance(rayDirection, shadingNormal, 1.0, intersectionMaterial.IoR, IoR_ratio); // the fraction of light that is reflected,
 			transmittance = 1.0 - reflectance; // and the fraction of light that is transmitted
 
 			ambientContribution = doAmbientLighting(rayColorMask, ambientIntensity, intersectionMaterial);
-			accumulatedColor += ambientContribution; // ambient light is always present no matter what, so go ahead and add it now
 
-			diffuseContribution = doDiffuseDirectLighting(rayColorMask, shadingNormal, directionToLight, lightMaterial.color, intersectionMaterial);
-			diffuseContribution *= transmittance; // the diffuse reflections from the surface are transmitted through the ClearCoat material, so we must weight them accordingly
-
-			specularContribution = doBlinnPhongSpecularLighting(rayColorMask, rayDirection, shadingNormal, directionToLight, lightMaterial.color, intersectionMaterial);
+			diffuseContribution = doDiffuseDirectLighting(rayColorMask, shadingNormal, directionToLight, lightColor, intersectionMaterial, diffuseFalloff);
+			diffuseContribution = mix(ambientContribution, diffuseContribution, diffuseFalloff);
+			diffuseContribution *= max(0.1, transmittance); // the diffuse reflections from the surface are transmitted through the ClearCoat material, so we must weight them accordingly
+			
+			specularContribution = doBlinnPhongSpecularLighting(rayColorMask, rayDirection, shadingNormal, directionToLight, lightColor, intersectionMaterial);
 
 			// If this ClearCoat type of material is the first thing that the camera ray encounters (bounces == 0), then setup and save a reflection ray for later use.
 			// After we've done that, first we'll send out the usual shadow ray to see if the Diffuse and Specular contributions can be added. Then once the shadow ray 
@@ -337,7 +352,7 @@ vec3 RayTrace()
 			// Therefore, the Ambient (global bounced diffuse) and Diffuse (direct diffuse from light source) contributions are skipped.
 			// ambientContribution = NA
 			// diffuseContribution = NA
-			specularContribution = doBlinnPhongSpecularLighting(rayColorMask, rayDirection, shadingNormal, directionToLight, lightMaterial.color, intersectionMaterial);
+			specularContribution = doBlinnPhongSpecularLighting(rayColorMask, rayDirection, shadingNormal, directionToLight, lightColor, intersectionMaterial);
 			// shadow rays are only test rays and must not contribute any lighting of their own.
 			// So if the current ray is a shadow ray (isShadowRay == TRUE), then we shut off the specular highlights.
 			specularContribution = (isShadowRay == TRUE) ? vec3(0) : specularContribution;
@@ -403,6 +418,7 @@ vec3 RayTrace()
 
 	if (initial_t < INFINITY)
 	{
+		fogStart = 20.0;
 		initial_t -= fogStart; // this makes the fog start a little farther away from the camera
 		// the following is the standard blending of objects with fog/atmosphere as they recede into the distance, using Beer's Law
 		accumulatedColor = mix(initialSkyColor, accumulatedColor, clamp(exp(-initial_t * 0.001), 0.0, 1.0));
@@ -420,27 +436,27 @@ void SetupScene(void)
 {
 	// rgb values for common metals
 	// Gold: (1.000, 0.766, 0.336) / Aluminum: (0.913, 0.921, 0.925) / Copper: (0.955, 0.637, 0.538) / Silver: (0.972, 0.960, 0.915)
-	float lightPower = 2.0;
-	Material lightMaterial = Material(POINT_LIGHT, vec3(1.0, 1.0, 1.0) * lightPower, 0.0, 0.0, -1, vec2(1, 1));
-	Material blueMaterial = Material(CLEARCOAT_DIFFUSE, vec3(0.01, 0.01, 1.0), uRoughness, 0.0, -1, vec2(1, 1));
-	Material redMaterial = Material(PHONG, vec3(1.0, 0.01, 0.01), uRoughness, 0.0, -1, vec2(1, 1));
-	Material groundUVGridMaterial = Material(CLEARCOAT_DIFFUSE, vec3(1.0), 0.0, 0.0, 0, vec2(100, 100));
-	Material metalMaterial = Material(METAL, vec3(1.000, 0.766, 0.336), uRoughness, 0.0, -1, vec2(1, 1));
-	Material glassMaterial = Material(TRANSPARENT, vec3(0.4, 1.0, 0.6), uRoughness, 1.5, -1, vec2(1, 1));
-	Material grayBlackCheckerMaterial = Material(CHECKERED_CLEARCOAT, vec3(1.0), 0.0, 1.5, -1, vec2(300, 300));
+	float pointLightPower = 2.0;
+	Material pointLightMaterial = Material(POINT_LIGHT, vec3(1.0) * pointLightPower, 0.0, 0.0, -1 );
+	Material blueMaterial = Material(CLEARCOAT_DIFFUSE, vec3(0.01, 0.01, 1.0), uRoughness, 1.4, -1);
+	Material redMaterial = Material(PHONG, vec3(1.0, 0.01, 0.01), uRoughness, 0.0, -1);
+	Material groundUVGridMaterial = Material(CLEARCOAT_DIFFUSE, vec3(1.0), 0.0, 1.3, 0);
+	Material metalMaterial = Material(METAL, vec3(1.000, 0.766, 0.336), uRoughness, 0.0, -1);
+	Material glassMaterial = Material(TRANSPARENT, vec3(0.4, 1.0, 0.6), uRoughness, 1.5, -1);
+	Material grayBlackCheckerMaterial = Material(CHECKERED_CLEARCOAT, vec3(1.0), 0.0, 1.4, -1);
 
 	vec3 lightPosition = vec3(4, 10, 5);
-	boxes[0] = Box(lightPosition - vec3(0.5), lightPosition + vec3(0.5), lightMaterial);
+	boxes[0] = Box(lightPosition - vec3(0.5), lightPosition + vec3(0.5), vec2(1, 1), pointLightMaterial);
 
-	rectangles[0] = Rectangle(vec3(0, 0, 0), normalize(vec3(0,1,0)), vec3(0), vec3(0), 1000.0, 1000.0, grayBlackCheckerMaterial);
+	rectangles[0] = Rectangle(vec3(0, 0, 0), normalize(vec3(0,1,0)), vec3(0), vec3(0), 1000.0, 1000.0, vec2(300, 300), grayBlackCheckerMaterial);
 	rectangles[0].vectorU = normalize(cross(abs(rectangles[0].normal.y) < 0.9 ? vec3(0,1,0) : vec3(0,0,-1), rectangles[0].normal));
 	rectangles[0].vectorV = cross(rectangles[0].vectorU, rectangles[0].normal);
 
-	spheres[0] = Sphere(0.2, lightPosition, lightMaterial);
-	spheres[1] = Sphere(4.0, vec3(0, 4, 0), blueMaterial);
-	spheres[2] = Sphere(4.0, vec3(-10, 4, 0), metalMaterial);
-	spheres[3] = Sphere(3.0, vec3(10, 3, 0), redMaterial);
-	spheres[4] = Sphere(4.0, vec3(-15, 4, 10), glassMaterial);
+	spheres[0] = Sphere(0.2, lightPosition, vec2(1, 1), pointLightMaterial);
+	spheres[1] = Sphere(4.0, vec3(0, 4, 0), vec2(1, 1), blueMaterial);
+	spheres[2] = Sphere(4.0, vec3(-10, 4, 0),vec2(1, 1), metalMaterial);
+	spheres[3] = Sphere(3.0, vec3(10, 3, 0), vec2(1, 1), redMaterial);
+	spheres[4] = Sphere(4.0, vec3(-15, 4, 10), vec2(1, 1), glassMaterial);
 }
 
 
