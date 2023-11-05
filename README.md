@@ -1,5 +1,5 @@
 # THREE.js-RayTracing-Renderer
-Real-time Classic Ray Tracing on all devices with a browser, featuring reflections, refractions, and progressive rendering, all on top of the Three.js WebGL framework.
+Real-time Classic Ray Tracing on all devices with a browser, with real reflections, refractions, and depth of field, all on top of the Three.js WebGL framework.
 
 <h4>Quick Controls Notes</h4>
 
