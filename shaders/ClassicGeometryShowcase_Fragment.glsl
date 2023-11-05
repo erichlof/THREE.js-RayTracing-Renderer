@@ -436,7 +436,7 @@ void SetupScene(void)
 {
 	// rgb values for common metals
 	// Gold: (1.000, 0.766, 0.336) / Aluminum: (0.913, 0.921, 0.925) / Copper: (0.955, 0.637, 0.538) / Silver: (0.972, 0.960, 0.915)
-	float pointLightPower = 2.0;
+	float pointLightPower = 4.0;
 	Material pointLightMaterial = Material(POINT_LIGHT, vec3(1.0) * pointLightPower, 0.0, 0.0, -1 );
 	Material blueMaterial = Material(CLEARCOAT_DIFFUSE, vec3(0.01, 0.01, 1.0), uRoughness, 1.4, -1);
 	Material redMaterial = Material(PHONG, vec3(1.0, 0.01, 0.01), uRoughness, 0.0, -1);
