@@ -245,6 +245,28 @@ function FirstPersonCameraControls(camera)
 
 
 
+function RayTracingShape(type)
+{
+	this.type = type;
+
+	this.transform = new THREE.Object3D();
+	this.transform.visible = false;
+	
+	this.material = new THREE.MeshPhysicalMaterial({
+		color: new THREE.Color(1.0, 1.0, 1.0), // (r,g,b) range: 0.0 to 1.0 / default is rgb(1,1,1) white
+		opacity: 1.0, // range: 0.0 to 1.0 / default is 1.0 (fully opaque)
+		ior: 1.5, // range: 1.0(air) to 2.33(diamond) / default is 1.5(glass) / other useful ior is 1.33(water)
+		clearcoat: 0.0, // range: 0.0 to 1.0 / default is 0.0 (no clearcoat)
+		metalness: 0.0, // range: either 0.0 or 1.0 / default is 0.0 (not metal)
+		roughness: 0.0 // range: 0.0 to 1.0 / default is 0.0 (no roughness, perfectly smooth)
+	});
+
+	this.uvScale = new THREE.Vector2(1, 1);
+
+	return this;
+}
+
+
 function onWindowResize(event)
 {
 
