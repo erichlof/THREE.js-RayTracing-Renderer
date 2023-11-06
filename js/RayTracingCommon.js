@@ -240,6 +240,15 @@ vec2 calcCylinderUV(vec3 pointOnCylinder, float cylinderHeightRadius, vec3 cylin
 	float v = -theta + 0.5; // -theta flips upside-down texture images
 	return vec2(u, v);
 }
+
+vec2 calcUnitCylinderUV(vec3 pointOnUnitCylinder)
+{
+	float phi = atan(-pointOnUnitCylinder.z, pointOnUnitCylinder.x);
+	float theta = pointOnUnitCylinder.y * 0.5;
+	float u = phi * ONE_OVER_TWO_PI + 0.5;
+	float v = -theta + 0.5; // -theta flips upside-down texture images
+	return vec2(u, v);
+}
 `;
 
 THREE.ShaderChunk[ 'raytracing_plane_intersect' ] = `
@@ -330,6 +339,38 @@ float RectangleIntersect( vec3 pos, vec3 normal, vec3 vectorU, vec3 vectorV, flo
 	{
 		u = dot(hit, vectorU) / radiusU; // bring u into the range: -1 to +1
 		v = dot(hit, vectorV) / radiusV; // bring v into the range: -1 to +1
+		if (abs(u) <= 1.0 && abs(v) <= 1.0)
+		{
+			u = u * 0.5 + 0.5; // finally, bring u into the 0.0-1.0 range, for texture lookups
+			v = v * 0.5 + 0.5; // finally, bring v into the 0.0-1.0 range, for texture lookups
+			return t;
+		}	
+	} 
+	
+	return INFINITY;
+}
+`;
+
+THREE.ShaderChunk[ 'raytracing_unit_rectangle_intersect' ] = `
+
+//----------------------------------------------------------------------------------------------------------------
+float UnitRectangleIntersect( vec3 rayOrigin, vec3 rayDirection, out float u, out float v )
+//----------------------------------------------------------------------------------------------------------------
+{
+	// for the unit rectangle that is located at the origin(vec3(0,0,0)), it's normal is vec3(0,0,1), which points directly towards our camera
+	float denom = dot(vec3(0,0,1), rayDirection);
+	// use the following for one-sided rectangle
+	//if (denom > 0.0) return INFINITY;
+
+	// normally it would be pOrO = rectanglePos - rayOrigin, and then t = dot(pOrO, normal) / denom
+	// but since this is a unit rectangle located at the world origin, pOrO = vec3(0,0,0) - rayOrigin, or just -rayOrigin
+        float t = dot(-rayOrigin, vec3(0,0,1)) / denom;
+	vec3 hit = rayOrigin + t * rayDirection;
+
+	if (t > 0.0) 
+	{
+		u = hit.x; // u will be in the range: -1 to +1
+		v = -hit.y; // v will be in the range: -1 to +1 (-hit.y flips the vertical so textures don't appear upside down)
 		if (abs(u) <= 1.0 && abs(v) <= 1.0)
 		{
 			u = u * 0.5 + 0.5; // finally, bring u into the 0.0-1.0 range, for texture lookups
@@ -581,6 +622,67 @@ float UnitParaboloidIntersect( vec3 ro, vec3 rd, out vec3 n )
 	if (t1 > 0.0 && abs(hitPoint.y) <= 1.0)
 	{
 		n = vec3(2.0 * hitPoint.x, k, 2.0 * hitPoint.z);
+		return t1;
+	}
+
+	return 0.0;
+}
+`;
+
+THREE.ShaderChunk[ 'raytracing_unit_hyperboloid_intersect' ] = `
+
+float UnitHyperboloidIntersect( vec3 ro, vec3 rd, float innerRadius, out vec3 n )
+{
+	vec3 hitPoint;
+	float t0, t1;
+	float a = (rd.x * rd.x) - (rd.y * rd.y) + (rd.z * rd.z);
+    	float b = 2.0 * ((rd.x * ro.x) - (rd.y * ro.y) + (rd.z * ro.z));
+    	float c = (ro.x * ro.x) - (ro.y * ro.y) + (ro.z * ro.z) - (innerRadius * innerRadius); // (1 sheet)
+	//c = (ro.x * ro.x) - (ro.y * ro.y) + (ro.z * ro.z) + (innerRadius * innerRadius); // (2 sheets) 
+	solveQuadratic(a, b, c, t0, t1);
+	
+	// first, try t0
+	hitPoint = ro + rd * t0;
+	if (t0 > 0.0 && abs(hitPoint.y) <= 1.0)
+	{
+		n = vec3(hitPoint.x, -hitPoint.y, hitPoint.z);
+		return t0;
+	}
+	// if t0 was invalid, try t1
+	hitPoint = ro + rd * t1;
+	if (t1 > 0.0 && abs(hitPoint.y) <= 1.0)
+	{
+		n = vec3(hitPoint.x, -hitPoint.y, hitPoint.z);
+		return t1;
+	}
+
+	return 0.0;
+}
+`;
+
+THREE.ShaderChunk[ 'raytracing_unit_hyperbolic_paraboloid_intersect' ] = `
+
+float UnitHyperbolicParaboloidIntersect( vec3 ro, vec3 rd, out vec3 n )
+{
+	vec3 hitPoint;
+	float t0, t1;
+	float a = (rd.x * rd.x) - (rd.y * rd.y) + (rd.z * rd.z);
+    	float b = 2.0 * ((rd.x * ro.x) - (rd.y * ro.y) + (rd.z * ro.z));
+    	float c = (ro.x * ro.x) - (ro.y * ro.y) + (ro.z * ro.z) - 1.0;
+	solveQuadratic(a, b, c, t0, t1);
+	
+	// first, try t0
+	hitPoint = ro + rd * t0;
+	if (t0 > 0.0 && abs(hitPoint.y) <= 1.0)
+	{
+		n = vec3(hitPoint.x, -hitPoint.y, hitPoint.z);
+		return t0;
+	}
+	// if t0 was invalid, try t1
+	hitPoint = ro + rd * t1;
+	if (t1 > 0.0 && abs(hitPoint.y) <= 1.0)
+	{
+		n = vec3(hitPoint.x, -hitPoint.y, hitPoint.z);
 		return t1;
 	}
 
