@@ -68,7 +68,7 @@ function initSceneData()
 	diffuseSphere.uvScale.set(1, 1); // if using a texture, how many times should the uv's repeat in the X axis / Y axis?
 
 	diffuseSphere.transform.scale.set(2, 2, 2);
-	diffuseSphere.transform.position.set(7, 2, 0);
+	diffuseSphere.transform.position.set(7.5, 2,-0.5);
 	//diffuseSphere.transform.rotation.set(0, 0, Math.PI * 0.25);
 	// after specifying any desired transforms (scale, position, rotation), we must call updateMatrixWorld() to actually fill in the shape's matrix with these new values
 	diffuseSphere.transform.updateMatrixWorld(true); // 'true' forces a matrix update now, rather than waiting for Three.js' 'renderer.render()' call which happens last
@@ -86,8 +86,8 @@ function initSceneData()
 
 	metalSphere.uvScale.set(1, 1); // if using a texture, how many times should the uv's repeat in the X axis / Y axis?
 
-	metalSphere.transform.scale.set(3, 3, 3);
-	metalSphere.transform.position.set(13, 3, -7);
+	metalSphere.transform.scale.set(4, 4, 4);
+	metalSphere.transform.position.set(12, 4, -9);
 	//metalSphere.transform.rotation.set(0, 0, Math.PI * 0.25);
 	// after specifying any desired transforms (scale, position, rotation), we must call updateMatrixWorld() to actually fill in the shape's matrix with these new values
 	metalSphere.transform.updateMatrixWorld(true); // 'true' forces a matrix update now, rather than waiting for Three.js' 'renderer.render()' call which happens last
@@ -166,7 +166,7 @@ function initSceneData()
 	cone.uvScale.set(2, 1); // if using a texture, how many times should the uv's repeat in the X axis / Y axis?
 
 	cone.transform.scale.set(2, 2, 2);
-	cone.transform.position.set(-9, 2, 4);
+	cone.transform.position.set(-10.5, 2, 4);
 	//cone.transform.rotation.set(0, 0, Math.PI * 0.25);
 	// after specifying any desired transforms (scale, position, rotation), we must call updateMatrixWorld() to actually fill in the shape's matrix with these new values
 	cone.transform.updateMatrixWorld(true); // 'true' forces a matrix update now, rather than waiting for Three.js' 'renderer.render()' call which happens last
@@ -185,7 +185,7 @@ function initSceneData()
 	paraboloid.uvScale.set(2, 1); // if using a texture, how many times should the uv's repeat in the X axis / Y axis?
 
 	paraboloid.transform.scale.set(2, 2, 2);
-	paraboloid.transform.position.set(-3, 2, 4);
+	paraboloid.transform.position.set(-3.5, 2, 4);
 	//paraboloid.transform.rotation.set(0, 0, Math.PI * 0.25);
 	// after specifying any desired transforms (scale, position, rotation), we must call updateMatrixWorld() to actually fill in the shape's matrix with these new values
 	paraboloid.transform.updateMatrixWorld(true); // 'true' forces a matrix update now, rather than waiting for Three.js' 'renderer.render()' call which happens last
@@ -204,7 +204,7 @@ function initSceneData()
 	hyperboloid.uvScale.set(2, 1); // if using a texture, how many times should the uv's repeat in the X axis / Y axis?
 
 	hyperboloid.transform.scale.set(2, 2, 2);
-	hyperboloid.transform.position.set(3, 2, 4);
+	hyperboloid.transform.position.set(3.5, 2, 4);
 	//hyperboloid.transform.rotation.set(0, 0, Math.PI * 0.25);
 	// after specifying any desired transforms (scale, position, rotation), we must call updateMatrixWorld() to actually fill in the shape's matrix with these new values
 	hyperboloid.transform.updateMatrixWorld(true); // 'true' forces a matrix update now, rather than waiting for Three.js' 'renderer.render()' call which happens last
@@ -223,7 +223,7 @@ function initSceneData()
 	hyperbolicParaboloid.uvScale.set(2, 1); // if using a texture, how many times should the uv's repeat in the X axis / Y axis?
 
 	hyperbolicParaboloid.transform.scale.set(2, 2, 2);
-	hyperbolicParaboloid.transform.position.set(9, 2, 4);
+	hyperbolicParaboloid.transform.position.set(11, 2, 4);
 	//hyperbolicParaboloid.transform.rotation.set(0, 0, Math.PI * 0.25);
 	// after specifying any desired transforms (scale, position, rotation), we must call updateMatrixWorld() to actually fill in the shape's matrix with these new values
 	hyperbolicParaboloid.transform.updateMatrixWorld(true); // 'true' forces a matrix update now, rather than waiting for Three.js' 'renderer.render()' call which happens last
