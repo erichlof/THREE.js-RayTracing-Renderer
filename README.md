@@ -9,7 +9,9 @@ Real-time Classic Ray Tracing on all devices with a browser, with real reflectio
 
 <h2>LIVE DEMOS</h2>
 
-* [Classic Geometry Showcase Demo](https://erichlof.github.io/THREE.js-RayTracing-Renderer/Classic_Geometry_Showcase.html) features some classic ray tracing shapes (spheres, planes, etc) while showing the main capabilities of the RayTracing Renderer: real reflections, refractions, pixel-perfect shadows, shadow caustics, 4 different material types (Phong, Metal, ClearCoat Diffuse, and Transparent) - all running at 60fps, even on your cell phone!
+* [Classic Geometry Showcase Demo](https://erichlof.github.io/THREE.js-RayTracing-Renderer/Classic_Geometry_Showcase.html) features some classic ray tracing shapes (spheres, planes, etc) while showing the main capabilities of the RayTracing Renderer: real reflections, refractions, pixel-perfect shadows, shadow caustics, 4 different material types (Phong, Metal, ClearCoat, and Transparent) - all running at 60fps, even on your cell phone!
+
+* [Quadric Shapes Demo](https://erichlof.github.io/THREE.js-RayTracing-Renderer/Quadric_Shapes.html) contains a directional light source (like the Sun) and demonstrates every shape from the Quadric Shapes family (spheres, cylinders, cones, paraboloids, hyperboloids, etc).  All of the objects are instantiated with easy Three.js library-type calls.  Each shape has its own transform (scaling, position, rotation, shearing) as well as its own material and uv coordinates.  All of this info is fed into the GPU via uniforms. Lastly, the Ray Tracing fragment shader (which runs on the GPU) takes in all of this data, then raycasts each quadric shape, handles all of the reflections, refractions, and direct lighting (and shadows) from the directional light source (the Sun), and finally delivers the beautiful ray traced images to your screen with blazing-fast speed! <br>
 
 
 <h2>TODO</h2>
