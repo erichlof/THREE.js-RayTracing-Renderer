@@ -49,9 +49,9 @@ function initSceneData()
 
 	groundRectangle.uvScale.set(300, 300); // if using a texture, how many times should the uv's repeat in the X axis / Y axis?
 
-	groundRectangle.transform.scale.set(1000, 1000, 1);
+	groundRectangle.transform.scale.set(1000, 1000, 1); // 1000 width, 1000 height
 	groundRectangle.transform.position.set(0, 0, 0);
-	groundRectangle.transform.rotation.set(Math.PI * -0.5, 0, 0);
+	groundRectangle.transform.rotation.set(Math.PI * -0.5, 0, 0); // this rotates the rectangle back from upright (default) to flat along the ground
 	// after specifying any desired transforms (scale, position, rotation), we must call updateMatrixWorld() to actually fill in the shape's matrix with these new values
 	groundRectangle.transform.updateMatrixWorld(true); // 'true' forces a matrix update now, rather than waiting for Three.js' 'renderer.render()' call which happens last
 	
@@ -106,7 +106,7 @@ function initSceneData()
 	coatSphere.uvScale.set(2, 1); // if using a texture, how many times should the uv's repeat in the X axis / Y axis?
 
 	coatSphere.transform.scale.set(4, 4, 4);
-	coatSphere.transform.position.set(0, 4, -3);
+	coatSphere.transform.position.set(0, 4, -2);
 	//coatSphere.transform.rotation.set(0, 0, Math.PI * 0.25);
 	// after specifying any desired transforms (scale, position, rotation), we must call updateMatrixWorld() to actually fill in the shape's matrix with these new values
 	coatSphere.transform.updateMatrixWorld(true); // 'true' forces a matrix update now, rather than waiting for Three.js' 'renderer.render()' call which happens last
@@ -266,14 +266,16 @@ function initSceneData()
 function updateVariablesAndUniforms() 
 {   
 	/* // do it the following way if the shape's transform matrix is continually updating every animation frame.
-	//coatSphereMesh.scale.set(5, 5, 5);
-	//coatSphereMesh.position.set(10, 5, -3);
-	//coatSphereMesh.rotation.set(0, 0, Math.PI * 0.25);
-	coatSphereMesh.updateMatrixWorld(true);
-	shearMatrix.makeShear(0, 0, 0, 0, 0, Math.sin(elapsedTime)); // parameters are (y_by_x, z_by_x, x_by_y, z_by_y, x_by_z, y_by_z)
-	coatSphereMesh.matrixWorld.multiply(shearMatrix); // multiply this shape's matrix by the shear matrix4
-	// note: don't do another call to updateMatrixWorld(), because it would wipe out the scale, position, and rotation values that we changed earlier
-	rayTracingUniforms.uSphereInvMatrix.value.copy(coatSphereMesh.matrixWorld).invert(); */
+	//coatSphere.transform.scale.set(4, 4, 4);
+	coatSphere.transform.position.set(0, 4, Math.sin(elapsedTime * 0.5) * 10); //-2 for z axis
+	//coatSphere.transform.rotation.set(0, 0, Math.PI * 0.25);
+	coatSphere.transform.updateMatrixWorld(true);
+	shearMatrix.makeShear(Math.sin(elapsedTime), 0, 0, 0, 0, 0); // parameters are (y_by_x, z_by_x, x_by_y, z_by_y, x_by_z, y_by_z)
+	coatSphere.transform.matrixWorld.multiply(shearMatrix); // multiply this shape's matrix by the shear matrix4
+	// note: if using a shearing transformation, don't call updateMatrixWorld() again, because it would wipe out the scale, position, and rotation values that we changed earlier
+	// finally, send the shape's newly-updated transform over to the GPU as a mat4 uniform (and invert it, so the shader can be more efficient with its raycasting calculations) 
+	rayTracingUniforms.uCoatSphereInvMatrix.value.copy(coatSphere.transform.matrixWorld).invert();
+ 	*/
 
 	// INFO
 	cameraInfoElement.innerHTML = "FOV: " + worldCamera.fov + " / Aperture: " + apertureSize.toFixed(2) + 
