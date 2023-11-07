@@ -34,10 +34,8 @@ in vec2 vUv;
 #define DIRECTIONAL_LIGHT 0
 #define PHONG 1
 #define METAL 2
-#define CLEARCOAT_DIFFUSE 3
+#define CLEARCOAT 3
 #define TRANSPARENT 4
-#define CHECKERED_PHONG 5
-#define CHECKERED_CLEARCOAT 6
 #define TRUE 1
 #define FALSE 0
 `;
@@ -485,6 +483,7 @@ float UnitSphereIntersect( vec3 ro, vec3 rd, out vec3 n )
 	{
 		hitPoint = ro + rd * t0;
 		n = hitPoint;
+		//n = dot(rd, n) < 0.0 ? n : -n;
 		return t0;
 	}
 	// if t0 was invalid, try t1
@@ -492,6 +491,7 @@ float UnitSphereIntersect( vec3 ro, vec3 rd, out vec3 n )
 	{
 		hitPoint = ro + rd * t1;
 		n = hitPoint;
+		//n = dot(rd, n) < 0.0 ? n : -n;
 		return t1;
 	}
 
@@ -552,6 +552,7 @@ float UnitCylinderIntersect( vec3 ro, vec3 rd, out vec3 n )
 	if (t0 > 0.0 && abs(hitPoint.y) <= 1.0)
 	{
 		n = vec3(hitPoint.x, 0.0, hitPoint.z);
+		n = dot(rd, n) < 0.0 ? n : -n;
 		return t0;
 	}
 	// if t0 was invalid, try t1
@@ -559,6 +560,7 @@ float UnitCylinderIntersect( vec3 ro, vec3 rd, out vec3 n )
 	if (t1 > 0.0 && abs(hitPoint.y) <= 1.0)
 	{
 		n = vec3(hitPoint.x, 0.0, hitPoint.z);
+		n = dot(rd, n) < 0.0 ? n : -n;
 		return t1;
 	}
 
@@ -573,7 +575,7 @@ float UnitConeIntersect( vec3 ro, vec3 rd, out vec3 n )
 	// the '(ro.y - h)' parts below truncate the top half of the double-cone, leaving a single cone with apex at top
 	vec3 hitPoint;
 	float t0, t1;
-	float h = 1.0;	      // 0.25 makes the circular base of cone end up as radius of 1, unit length
+	float h = 1.0;	      // 0.25 below makes the circular base of cone end up as unit radius of 1.0
 	float a = rd.x * rd.x - (0.25 * rd.y * rd.y) + rd.z * rd.z;
 	float b = 2.0 * (rd.x * ro.x - (0.25 * rd.y * (ro.y - h)) + rd.z * ro.z);
 	float c = ro.x * ro.x - (0.25 * (ro.y - h) * (ro.y - h)) + ro.z * ro.z;
@@ -584,6 +586,7 @@ float UnitConeIntersect( vec3 ro, vec3 rd, out vec3 n )
 	if (t0 > 0.0 && abs(hitPoint.y) <= 1.0)
 	{
 		n = vec3(hitPoint.x, (h - hitPoint.y) * 0.25, hitPoint.z);
+		n = dot(rd, n) < 0.0 ? n : -n;
 		return t0;
 	}
 	// if t0 was invalid, try t1
@@ -591,6 +594,7 @@ float UnitConeIntersect( vec3 ro, vec3 rd, out vec3 n )
 	if (t1 > 0.0 && abs(hitPoint.y) <= 1.0)
 	{
 		n = vec3(hitPoint.x, (h - hitPoint.y) * 0.25, hitPoint.z);
+		n = dot(rd, n) < 0.0 ? n : -n;
 		return t1;
 	}
 
@@ -615,6 +619,7 @@ float UnitParaboloidIntersect( vec3 ro, vec3 rd, out vec3 n )
 	if (t0 > 0.0 && abs(hitPoint.y) <= 1.0)
 	{
 		n = vec3(2.0 * hitPoint.x, k, 2.0 * hitPoint.z);
+		n = dot(rd, n) < 0.0 ? n : -n;
 		return t0;
 	}
 	// if t0 was invalid, try t1
@@ -622,6 +627,7 @@ float UnitParaboloidIntersect( vec3 ro, vec3 rd, out vec3 n )
 	if (t1 > 0.0 && abs(hitPoint.y) <= 1.0)
 	{
 		n = vec3(2.0 * hitPoint.x, k, 2.0 * hitPoint.z);
+		n = dot(rd, n) < 0.0 ? n : -n;
 		return t1;
 	}
 
@@ -637,8 +643,8 @@ float UnitHyperboloidIntersect( vec3 ro, vec3 rd, float innerRadius, out vec3 n 
 	float t0, t1;
 	float a = (rd.x * rd.x) - (rd.y * rd.y) + (rd.z * rd.z);
     	float b = 2.0 * ((rd.x * ro.x) - (rd.y * ro.y) + (rd.z * ro.z));
-    	float c = (ro.x * ro.x) - (ro.y * ro.y) + (ro.z * ro.z) - (innerRadius * innerRadius); // (1 sheet)
-	//c = (ro.x * ro.x) - (ro.y * ro.y) + (ro.z * ro.z) + (innerRadius * innerRadius); // (2 sheets) 
+    	float c = (ro.x * ro.x) - (ro.y * ro.y) + (ro.z * ro.z) - (innerRadius * innerRadius); // 1 sheet:  - (innerRadius * innerRadius)
+	    //c = (ro.x * ro.x) - (ro.y * ro.y) + (ro.z * ro.z) + (innerRadius * innerRadius); // 2 sheets: + (innerRadius * innerRadius)
 	solveQuadratic(a, b, c, t0, t1);
 	
 	// first, try t0
@@ -646,6 +652,7 @@ float UnitHyperboloidIntersect( vec3 ro, vec3 rd, float innerRadius, out vec3 n 
 	if (t0 > 0.0 && abs(hitPoint.y) <= 1.0)
 	{
 		n = vec3(hitPoint.x, -hitPoint.y, hitPoint.z);
+		n = dot(rd, n) < 0.0 ? n : -n;
 		return t0;
 	}
 	// if t0 was invalid, try t1
@@ -653,6 +660,7 @@ float UnitHyperboloidIntersect( vec3 ro, vec3 rd, float innerRadius, out vec3 n 
 	if (t1 > 0.0 && abs(hitPoint.y) <= 1.0)
 	{
 		n = vec3(hitPoint.x, -hitPoint.y, hitPoint.z);
+		n = dot(rd, n) < 0.0 ? n : -n;
 		return t1;
 	}
 
@@ -666,23 +674,25 @@ float UnitHyperbolicParaboloidIntersect( vec3 ro, vec3 rd, out vec3 n )
 {
 	vec3 hitPoint;
 	float t0, t1;
-	float a = (rd.x * rd.x) - (rd.y * rd.y) + (rd.z * rd.z);
-    	float b = 2.0 * ((rd.x * ro.x) - (rd.y * ro.y) + (rd.z * ro.z));
-    	float c = (ro.x * ro.x) - (ro.y * ro.y) + (ro.z * ro.z) - 1.0;
+	float a = rd.x * rd.x - rd.z * rd.z;
+	float b = 2.0 * (rd.x * ro.x - rd.z * ro.z) - rd.y;
+	float c = ro.x * ro.x - ro.z * ro.z - ro.y;
 	solveQuadratic(a, b, c, t0, t1);
 	
 	// first, try t0
 	hitPoint = ro + rd * t0;
-	if (t0 > 0.0 && abs(hitPoint.y) <= 1.0)
+	if (t0 > 0.0 && abs(hitPoint.x) <= 1.0 && abs(hitPoint.z) <= 1.0)
 	{
-		n = vec3(hitPoint.x, -hitPoint.y, hitPoint.z);
+		n = vec3(2.0 * hitPoint.x, -1.0, -2.0 * hitPoint.z);
+		n = dot(rd, n) < 0.0 ? n : -n;
 		return t0;
 	}
 	// if t0 was invalid, try t1
 	hitPoint = ro + rd * t1;
-	if (t1 > 0.0 && abs(hitPoint.y) <= 1.0)
+	if (t1 > 0.0 && abs(hitPoint.x) <= 1.0 && abs(hitPoint.z) <= 1.0)
 	{
-		n = vec3(hitPoint.x, -hitPoint.y, hitPoint.z);
+		n = vec3(2.0 * hitPoint.x, -1.0, -2.0 * hitPoint.z);
+		n = dot(rd, n) < 0.0 ? n : -n;
 		return t1;
 	}
 
