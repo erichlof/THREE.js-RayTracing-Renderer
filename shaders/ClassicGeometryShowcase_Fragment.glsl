@@ -16,8 +16,9 @@ vec3 rayOrigin, rayDirection;
 vec3 intersectionNormal;
 vec2 intersectionUV;
 int intersectionTextureID;
+int intersectionShapeIsClosed;
 
-struct Material { int type; vec3 color; float roughness; float IoR; int textureID; };
+struct Material { int type; int isCheckered; vec3 color; vec3 color2; float roughness; float IoR; int textureID; };
 struct Rectangle { vec3 position; vec3 normal; vec3 vectorU; vec3 vectorV; float radiusU; float radiusV; vec2 uvScale; Material material; };
 struct Box { vec3 minCorner; vec3 maxCorner; vec2 uvScale; Material material; };
 struct Sphere { float radius; vec3 position; vec2 uvScale; Material material; };
@@ -70,18 +71,18 @@ float SceneIntersect( int isShadowRay )
 		}
 	}
 
-	for (int i = 0; i < N_RECTANGLES; i++)
-        {
-		d = RectangleIntersect( rectangles[i].position, rectangles[i].normal, rectangles[i].vectorU, rectangles[i].vectorV, 
-			rectangles[i].radiusU, rectangles[i].radiusV, rayOrigin, rayDirection, u, v );
-		if (d < t)
-		{
-			t = d;
-			intersectionNormal = rectangles[i].normal;
-			intersectionMaterial = rectangles[i].material;
-			intersectionUV = vec2(u, v) * rectangles[i].uvScale;
-		}
+	// Ground checkered Rectangle
+	d = RectangleIntersect( rectangles[0].position, rectangles[0].normal, rectangles[0].vectorU, rectangles[0].vectorV, 
+		rectangles[0].radiusU, rectangles[0].radiusV, rayOrigin, rayDirection, u, v );
+	if (d < t)
+	{
+		t = d;
+		intersectionNormal = rectangles[0].normal;
+		intersectionMaterial = rectangles[0].material;
+		intersectionUV = vec2(u, v) * rectangles[0].uvScale;
+		intersectionShapeIsClosed = FALSE;
 	}
+	
 	
 	for (int i = 0; i < N_SPHERES; i++)
         {
@@ -93,6 +94,7 @@ float SceneIntersect( int isShadowRay )
 			intersectionNormal = (rayOrigin + t * rayDirection) - spheres[i].position;
 			intersectionMaterial = spheres[i].material;
 			intersectionUV = calcSphereUV(intersectionPoint, spheres[i].radius, spheres[i].position) * spheres[i].uvScale;
+			intersectionShapeIsClosed = TRUE;
 		}
 	}
 
@@ -126,8 +128,6 @@ vec3 RayTrace()
 	// go ahead and get the skyColor for our camera ray - we'll use it if the ray misses everything, and also for final blending of objects with fog/atmosphere in the distance
 	vec3 initialSkyColor = getSkyColor(rayDirection);
 	vec3 skyColor;
-	vec3 checkColor0 = vec3(0.3, 0.3, 0.3);
-	vec3 checkColor1 = vec3(0.01, 0.01, 0.01);
 
 	float t = INFINITY;
 	float initial_t = INFINITY;
@@ -141,15 +141,15 @@ vec3 RayTrace()
 	int isShadowRay = FALSE;
 	int willNeedReflectionRay = FALSE;
 	int sceneUsesDirectionalLight = FALSE;
-	//int previousIntersectionMaterialType;
-	//intersectionMaterial.type = -100;
+	int previousIntersectionMaterialType;
+	intersectionMaterial.type = -100;
 
 	// For the kind of ray tracing we're doing, 6 or 7 bounces is enough to do all the reflections and refractions that are most clearly noticeable.
 	// You might be able to get away with 5 bounces if on a mobile budget, or crank it up to 8/9 bounces if your scene has a bunch of mirrors or glass objects.
 
 	for (int bounces = 0; bounces < 6; bounces++)
 	{
-		//previousIntersectionMaterialType = intersectionMaterial.type;
+		previousIntersectionMaterialType = intersectionMaterial.type;
 
 		// the following tests for intersections with the entire scene, then reports back the closest object (min t value)
 		t = SceneIntersect( isShadowRay );
@@ -256,6 +256,11 @@ vec3 RayTrace()
 			textureColor *= textureColor; // remove image gamma by raising texture color to the power of 2.2 (but squaring is close enough and cheaper)
 			intersectionMaterial.color *= textureColor; // now that the texture color is in linear space, we can do simple math with it, like multiplying and adding
 		}
+
+		if (intersectionMaterial.isCheckered == TRUE)
+		{
+			intersectionMaterial.color = mod(floor(intersectionUV.x) + floor(intersectionUV.y), 2.0) == 0.0 ? intersectionMaterial.color : intersectionMaterial.color2;
+		}
 		
                 if (intersectionMaterial.type == PHONG)
                 {
@@ -299,18 +304,7 @@ vec3 RayTrace()
 			continue; // continue ray tracing next with the mirror-reflection ray
 		}
 
-		if (intersectionMaterial.type == CHECKERED_CLEARCOAT)
-		{
-			if (mod(floor(intersectionUV.x) + floor(intersectionUV.y), 2.0) == 0.0)
-				intersectionMaterial.color *= checkColor0;
-			else intersectionMaterial.color *= checkColor1;
-
-			// now that the checkered color has been determined for this surface, change the material type
-			// to the usual ClearCoat, in order to handle lighting and reflections (avoids code duplication)
-			intersectionMaterial.type = CLEARCOAT_DIFFUSE; // will be handled by the code directly below
-		}
-
-		if (intersectionMaterial.type == CLEARCOAT_DIFFUSE)
+		if (intersectionMaterial.type == CLEARCOAT)
 		{
 			// the following will decrease the IndexOfRefracton, or IoR(shininess) of the clear coating as the roughness increases 
 			intersectionMaterial.IoR = mix(1.0, intersectionMaterial.IoR, clamp(1.0 - (intersectionMaterial.roughness * 1.2), 0.001, 1.0)); // as roughness increases, the IndexOfRefraction(shininess/brightness) decreases
@@ -326,10 +320,10 @@ vec3 RayTrace()
 			
 			specularContribution = doBlinnPhongSpecularLighting(rayColorMask, rayDirection, shadingNormal, directionToLight, lightColor, intersectionMaterial);
 
-			// If this ClearCoat type of material is the first thing that the camera ray encounters (bounces == 0), then setup and save a reflection ray for later use.
-			// After we've done that, first we'll send out the usual shadow ray to see if the Diffuse and Specular contributions can be added. Then once the shadow ray 
+			// If this ClearCoat type of material is either the first thing that the camera ray encounters (bounces == 0), or the 2nd thing the ray encounters after reflecting from METAL (bounces == 1),
+			// then setup and save a reflection ray for later use. After we've done that, first we'll send out the usual shadow ray to see if the Diffuse and Specular contributions can be added. Then once the shadow ray 
 			// is done testing for light visibility, we'll rewind back to this surface and send out the saved reflection ray on its own trajectory, in order to capture reflections of the environment. 
-			if (bounces == 0)
+			if (bounces == 0 || (bounces == 1 && previousIntersectionMaterialType == METAL))
 			{
 				willNeedReflectionRay = TRUE; // this flag will let the future code know that it needs to rewind time and trace the saved reflection ray
 				reflectionRayColorMask = rayColorMask * reflectance * clamp(1.0 - (intersectionMaterial.roughness * 1.2), 0.001, 1.0); // weight reflected ray with reflectance value we got
@@ -358,11 +352,11 @@ vec3 RayTrace()
 			specularContribution = (isShadowRay == TRUE) ? vec3(0) : specularContribution;
 			accumulatedColor += specularContribution; // ideally we would send a new shadow ray to see if this surface can actually see the light, but to minimize complexity/time, we just add specular highlight now
 
-			// If this Transparent type of material is the first thing that the camera ray encounters (bounces == 0), then setup and save a reflection ray for later use.
-			// After we've done that, first we'll send out the refracted ray (transmitted ray) to find what parts of the scene we can see through the material. Then once the refraction
-			// (transmitted) ray is done with its work, we'll send out the saved reflection ray on its own trajectory, in order to capture reflections of the surrounding environment. 
+			// If this Transparent type of material is either the first thing the camera ray encounters (bounces == 0) or the 2nd thing the ray encounters after reflecting from METAL (bounces == 1) then setup 
+			// and save a reflection ray for later use. After we've done that, first we'll send out the refracted ray (transmitted ray) to find what parts of the scene we can see through the material. Then once the 
+			// refraction(transmitted) ray is done with its work, we'll send out the saved reflection ray on its own trajectory, in order to capture reflections of the surrounding environment. 
 			// In the end, this will give us the photo-realistic double image (reflected portion & refracted portion) that we see on real-life transparent materials like glass, windows, water, plastic, etc.
-			if (bounces == 0)
+			if (bounces == 0 || (bounces == 1 && previousIntersectionMaterialType == METAL))
 			{
 				willNeedReflectionRay = TRUE;
 				reflectionRayColorMask = rayColorMask * reflectance * clamp(1.0 - (intersectionMaterial.roughness * 1.2), 0.001, 1.0);
@@ -380,10 +374,10 @@ vec3 RayTrace()
 			}
 
 			// This part of the code handles the transmitted(refracted) portion of the Transparent surface
-
-			// is ray leaving a solid object from the inside? 
-			// If so, attenuate ray color with object color by how far ray has travelled through the object's interior
-			if (distance(geometryNormal, shadingNormal) > 0.1) // this happens when trying to exit a glass sphere from the inside - geometryNormal and shadingNormal do not match
+			if (intersectionShapeIsClosed == FALSE)
+				rayColorMask *= intersectionMaterial.color;
+			// Is ray leaving a solid object from the inside? If so, attenuate ray color with object color by how far ray has travelled through the object's interior
+			else if (distance(geometryNormal, shadingNormal) > 0.1) // this happens when trying to exit a glass sphere from the inside - geometryNormal and shadingNormal do not match
 			{
 				transparentThickness = 0.2;
 				// the following uses Beer's Law to attenuate the light energy (brightness and color saturation) by how far the light ray had to travel through the transparent material.
@@ -437,13 +431,13 @@ void SetupScene(void)
 	// rgb values for common metals
 	// Gold: (1.000, 0.766, 0.336) / Aluminum: (0.913, 0.921, 0.925) / Copper: (0.955, 0.637, 0.538) / Silver: (0.972, 0.960, 0.915)
 	float pointLightPower = 4.0;
-	Material pointLightMaterial = Material(POINT_LIGHT, vec3(1.0) * pointLightPower, 0.0, 0.0, -1 );
-	Material blueMaterial = Material(CLEARCOAT_DIFFUSE, vec3(0.01, 0.01, 1.0), uRoughness, 1.4, -1);
-	Material redMaterial = Material(PHONG, vec3(1.0, 0.01, 0.01), uRoughness, 0.0, -1);
-	Material groundUVGridMaterial = Material(CLEARCOAT_DIFFUSE, vec3(1.0), 0.0, 1.3, 0);
-	Material metalMaterial = Material(METAL, vec3(1.000, 0.766, 0.336), uRoughness, 0.0, -1);
-	Material glassMaterial = Material(TRANSPARENT, vec3(0.4, 1.0, 0.6), uRoughness, 1.5, -1);
-	Material grayBlackCheckerMaterial = Material(CHECKERED_CLEARCOAT, vec3(1.0), 0.0, 1.4, -1);
+	Material pointLightMaterial = Material(POINT_LIGHT, FALSE, vec3(1.0, 1.0, 1.0) * pointLightPower, vec3(0.0, 0.0, 0.0), 0.0, 0.0, -1 );
+	Material blueMaterial = Material(CLEARCOAT, FALSE, vec3(0.01, 0.01, 1.0), vec3(0.0, 0.0, 0.0), uRoughness, 1.4, -1);
+	Material redMaterial = Material(PHONG, FALSE, vec3(1.0, 0.01, 0.01), vec3(0.0, 0.0, 0.0), uRoughness, 0.0, -1);
+	Material groundUVGridMaterial = Material(CLEARCOAT, FALSE, vec3(1.0, 1.0, 1.0), vec3(0.0, 0.0, 0.0), 0.0, 1.3, 0);
+	Material metalMaterial = Material(METAL, FALSE, vec3(1.000, 0.766, 0.336), vec3(0.0, 0.0, 0.0), uRoughness, 0.0, -1);
+	Material glassMaterial = Material(TRANSPARENT, FALSE, vec3(0.4, 1.0, 0.6), vec3(0.0, 0.0, 0.0), uRoughness, 1.5, -1);
+	Material grayBlackCheckerMaterial = Material(CLEARCOAT, TRUE, vec3(1.0, 1.0, 1.0), vec3(0.0, 0.0, 0.0), 0.0, 1.4, -1);
 
 	vec3 lightPosition = vec3(4, 10, 5);
 	boxes[0] = Box(lightPosition - vec3(0.5), lightPosition + vec3(0.5), vec2(1, 1), pointLightMaterial);
