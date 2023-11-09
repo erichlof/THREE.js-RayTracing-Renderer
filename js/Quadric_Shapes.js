@@ -3,8 +3,9 @@ let UVGridTexture;
 let imageTexturesTotalCount = 1;
 let numOfImageTexturesLoaded = 0;
 let shearMatrix = new THREE.Matrix4();
-let groundRectangle, diffuseSphere, metalSphere, coatSphere, glassSphere;
-let cylinder, cone, paraboloid, hyperboloid, hyperbolicParaboloid;
+let groundRectangle, disk, box;
+let diffuseSphere, metalSphere, coatSphere, glassSphere;
+let cylinder, cone, paraboloid, hyperboloid, hyperbolicParaboloid, capsule;
 
 
 
@@ -47,14 +48,53 @@ function initSceneData()
 	groundRectangle.material.metalness = 0.0; // range: either 0.0 or 1.0 / default is 0.0 (not metal)
 	groundRectangle.material.roughness = 0.0; // range: 0.0 to 1.0 / default is 0.0 (no roughness, perfectly smooth)
 
-	groundRectangle.uvScale.set(300, 300); // if using a texture, how many times should the uv's repeat in the X axis / Y axis?
+	groundRectangle.uvScale.set(300, 300); // if checkered or using a texture, how many times should the uv's repeat in the X axis / Y axis?
 
 	groundRectangle.transform.scale.set(1000, 1000, 1); // 1000 width, 1000 height
 	groundRectangle.transform.position.set(0, 0, 0);
 	groundRectangle.transform.rotation.set(Math.PI * -0.5, 0, 0); // this rotates the rectangle back from upright (default) to flat along the ground
 	// after specifying any desired transforms (scale, position, rotation), we must call updateMatrixWorld() to actually fill in the shape's matrix with these new values
 	groundRectangle.transform.updateMatrixWorld(true); // 'true' forces a matrix update now, rather than waiting for Three.js' 'renderer.render()' call which happens last
+
+
+	// ClearCoat disk with uvGrid texture applied
+	disk = new RayTracingShape("disk");
+
+	disk.material.color.set(1.0, 1.0, 1.0); // (r,g,b) range: 0.0 to 1.0 / default is rgb(1,1,1) white
+	disk.material.opacity = 1.0; // range: 0.0 to 1.0 / default is 1.0 (fully opaque)
+	disk.material.ior = 1.4; // range: 1.0(air) to 2.33(diamond) / default is 1.5(glass) / other useful ior is 1.33(water)
+	disk.material.clearcoat = 1.0; // range: 0.0 to 1.0 / default is 0.0 (no clearcoat)
+	disk.material.metalness = 0.0; // range: either 0.0 or 1.0 / default is 0.0 (not metal)
+	disk.material.roughness = 0.0; // range: 0.0 to 1.0 / default is 0.0 (no roughness, perfectly smooth)
+
+	disk.uvScale.set(1, 1); // if checkered or using a texture, how many times should the uv's repeat in the X axis / Y axis?
+
+	disk.transform.scale.set(2, 2, 1);
+	disk.transform.position.set(15, 2, 4);
+	disk.transform.rotation.set(-0.7, -0.9, -0.5);
+	// after specifying any desired transforms (scale, position, rotation), we must call updateMatrixWorld() to actually fill in the shape's matrix with these new values
+	disk.transform.updateMatrixWorld(true); // 'true' forces a matrix update now, rather than waiting for Three.js' 'renderer.render()' call which happens last
 	
+
+	// ClearCoat checkered box
+	box = new RayTracingShape("box");
+
+	box.material.color.set(1.0, 1.0, 1.0); // (r,g,b) range: 0.0 to 1.0 / default is rgb(1,1,1) white
+	box.material.opacity = 1.0; // range: 0.0 to 1.0 / default is 1.0 (fully opaque)
+	box.material.ior = 1.4; // range: 1.0(air) to 2.33(diamond) / default is 1.5(glass) / other useful ior is 1.33(water)
+	box.material.clearcoat = 1.0; // range: 0.0 to 1.0 / default is 0.0 (no clearcoat)
+	box.material.metalness = 0.0; // range: either 0.0 or 1.0 / default is 0.0 (not metal)
+	box.material.roughness = 0.0; // range: 0.0 to 1.0 / default is 0.0 (no roughness, perfectly smooth)
+
+	box.uvScale.set(1, 1); // if checkered or using a texture, how many times should the uv's repeat in the X axis / Y axis?
+
+	box.transform.scale.set(2, 2, 4);
+	box.transform.position.set(6, 2.01, -18);
+	box.transform.rotation.set(0, -0.8, 0);
+	// after specifying any desired transforms (scale, position, rotation), we must call updateMatrixWorld() to actually fill in the shape's matrix with these new values
+	box.transform.updateMatrixWorld(true); // 'true' forces a matrix update now, rather than waiting for Three.js' 'renderer.render()' call which happens last
+
+
 	// diffuse sphere
 	diffuseSphere = new RayTracingShape("sphere");
 
@@ -65,7 +105,7 @@ function initSceneData()
 	diffuseSphere.material.metalness = 0.0; // range: either 0.0 or 1.0 / default is 0.0 (not metal)
 	diffuseSphere.material.roughness = 1.0; // range: 0.0 to 1.0 / default is 0.0 (no roughness, perfectly smooth)
 
-	diffuseSphere.uvScale.set(1, 1); // if using a texture, how many times should the uv's repeat in the X axis / Y axis?
+	diffuseSphere.uvScale.set(1, 1); // if checkered or using a texture, how many times should the uv's repeat in the X axis / Y axis?
 
 	diffuseSphere.transform.scale.set(2, 2, 2);
 	diffuseSphere.transform.position.set(7.5, 2,-0.5);
@@ -84,7 +124,7 @@ function initSceneData()
 	metalSphere.material.metalness = 1.0; // range: either 0.0 or 1.0 / default is 0.0 (not metal)
 	metalSphere.material.roughness = 0.0; // range: 0.0 to 1.0 / default is 0.0 (no roughness, perfectly smooth)
 
-	metalSphere.uvScale.set(1, 1); // if using a texture, how many times should the uv's repeat in the X axis / Y axis?
+	metalSphere.uvScale.set(1, 1); // if checkered or using a texture, how many times should the uv's repeat in the X axis / Y axis?
 
 	metalSphere.transform.scale.set(4, 4, 4);
 	metalSphere.transform.position.set(12, 4, -9);
@@ -93,7 +133,7 @@ function initSceneData()
 	metalSphere.transform.updateMatrixWorld(true); // 'true' forces a matrix update now, rather than waiting for Three.js' 'renderer.render()' call which happens last
 	
 
-	// clearcoat sphere
+	// clearcoat sphere with uvGrid texture applied
 	coatSphere = new RayTracingShape("sphere");
 
 	coatSphere.material.color.set(1.0, 1.0, 1.0); // (r,g,b) range: 0.0 to 1.0 / default is rgb(1,1,1) white
@@ -103,7 +143,7 @@ function initSceneData()
 	coatSphere.material.metalness = 0.0; // range: either 0.0 or 1.0 / default is 0.0 (not metal)
 	coatSphere.material.roughness = 0.0; // range: 0.0 to 1.0 / default is 0.0 (no roughness, perfectly smooth)
 
-	coatSphere.uvScale.set(2, 1); // if using a texture, how many times should the uv's repeat in the X axis / Y axis?
+	coatSphere.uvScale.set(2, 1); // if checkered or using a texture, how many times should the uv's repeat in the X axis / Y axis?
 
 	coatSphere.transform.scale.set(4, 4, 4);
 	coatSphere.transform.position.set(0, 4, -2);
@@ -125,7 +165,7 @@ function initSceneData()
 	glassSphere.material.metalness = 0.0; // range: either 0.0 or 1.0 / default is 0.0 (not metal)
 	glassSphere.material.roughness = 0.0; // range: 0.0 to 1.0 / default is 0.0 (no roughness, perfectly smooth)
 
-	glassSphere.uvScale.set(1, 1); // if using a texture, how many times should the uv's repeat in the X axis / Y axis?
+	glassSphere.uvScale.set(1, 1); // if checkered or using a texture, how many times should the uv's repeat in the X axis / Y axis?
 
 	glassSphere.transform.scale.set(4, 4, 4);
 	glassSphere.transform.position.set(-14, 4, -5);
@@ -144,7 +184,7 @@ function initSceneData()
 	cylinder.material.metalness = 0.0; // range: either 0.0 or 1.0 / default is 0.0 (not metal)
 	cylinder.material.roughness = 0.0; // range: 0.0 to 1.0 / default is 0.0 (no roughness, perfectly smooth)
 
-	cylinder.uvScale.set(2, 1); // if using a texture, how many times should the uv's repeat in the X axis / Y axis?
+	cylinder.uvScale.set(2, 1); // if checkered or using a texture, how many times should the uv's repeat in the X axis / Y axis?
 
 	cylinder.transform.scale.set(3, 5, 3);
 	cylinder.transform.position.set(-8, 5, -14);
@@ -163,7 +203,7 @@ function initSceneData()
 	cone.material.metalness = 0.0; // range: either 0.0 or 1.0 / default is 0.0 (not metal)
 	cone.material.roughness = 0.0; // range: 0.0 to 1.0 / default is 0.0 (no roughness, perfectly smooth)
 
-	cone.uvScale.set(2, 1); // if using a texture, how many times should the uv's repeat in the X axis / Y axis?
+	cone.uvScale.set(2, 1); // if checkered or using a texture, how many times should the uv's repeat in the X axis / Y axis?
 
 	cone.transform.scale.set(2, 2, 2);
 	cone.transform.position.set(-10.5, 2, 4);
@@ -182,7 +222,7 @@ function initSceneData()
 	paraboloid.material.metalness = 0.0; // range: either 0.0 or 1.0 / default is 0.0 (not metal)
 	paraboloid.material.roughness = 0.0; // range: 0.0 to 1.0 / default is 0.0 (no roughness, perfectly smooth)
 
-	paraboloid.uvScale.set(2, 1); // if using a texture, how many times should the uv's repeat in the X axis / Y axis?
+	paraboloid.uvScale.set(2, 1); // if checkered or using a texture, how many times should the uv's repeat in the X axis / Y axis?
 
 	paraboloid.transform.scale.set(2, 2, 2);
 	paraboloid.transform.position.set(-3.5, 2, 4);
@@ -201,7 +241,7 @@ function initSceneData()
 	hyperboloid.material.metalness = 0.0; // range: either 0.0 or 1.0 / default is 0.0 (not metal)
 	hyperboloid.material.roughness = 0.0; // range: 0.0 to 1.0 / default is 0.0 (no roughness, perfectly smooth)
 
-	hyperboloid.uvScale.set(2, 1); // if using a texture, how many times should the uv's repeat in the X axis / Y axis?
+	hyperboloid.uvScale.set(2, 1); // if checkered or using a texture, how many times should the uv's repeat in the X axis / Y axis?
 
 	hyperboloid.transform.scale.set(2, 2, 2);
 	hyperboloid.transform.position.set(3.5, 2, 4);
@@ -220,7 +260,7 @@ function initSceneData()
 	hyperbolicParaboloid.material.metalness = 0.0; // range: either 0.0 or 1.0 / default is 0.0 (not metal)
 	hyperbolicParaboloid.material.roughness = 0.0; // range: 0.0 to 1.0 / default is 0.0 (no roughness, perfectly smooth)
 
-	hyperbolicParaboloid.uvScale.set(2, 1); // if using a texture, how many times should the uv's repeat in the X axis / Y axis?
+	hyperbolicParaboloid.uvScale.set(2, 1); // if checkered or using a texture, how many times should the uv's repeat in the X axis / Y axis?
 
 	hyperbolicParaboloid.transform.scale.set(2, 2, 2);
 	hyperbolicParaboloid.transform.position.set(11, 2, 4);
@@ -229,12 +269,34 @@ function initSceneData()
 	hyperbolicParaboloid.transform.updateMatrixWorld(true); // 'true' forces a matrix update now, rather than waiting for Three.js' 'renderer.render()' call which happens last
 
 
+	// checkered clearcoat capsule
+	capsule = new RayTracingShape("capsule");
+
+	capsule.material.color.set(1.0, 1.0, 1.0); // (r,g,b) range: 0.0 to 1.0 / default is rgb(1,1,1) white
+	capsule.material.opacity = 1.0; // range: 0.0 to 1.0 / default is 1.0 (fully opaque)
+	capsule.material.ior = 1.4; // range: 1.0(air) to 2.33(diamond) / default is 1.5(glass) / other useful ior is 1.33(water)
+	capsule.material.clearcoat = 1.0; // range: 0.0 to 1.0 / default is 0.0 (no clearcoat)
+	capsule.material.metalness = 0.0; // range: either 0.0 or 1.0 / default is 0.0 (not metal)
+	capsule.material.roughness = 0.0; // range: 0.0 to 1.0 / default is 0.0 (no roughness, perfectly smooth)
+
+	capsule.uvScale.set(2, 1); // if checkered or using a texture, how many times should the uv's repeat in the X axis / Y axis?
+
+	capsule.transform.scale.set(1.5, 1.5, 1.5);
+	capsule.transform.position.set(19, 1.5, -4);
+	capsule.transform.rotation.set(0, 0, Math.PI * 0.5);
+	// after specifying any desired transforms (scale, position, rotation), we must call updateMatrixWorld() to actually fill in the shape's matrix with these new values
+	capsule.transform.updateMatrixWorld(true); // 'true' forces a matrix update now, rather than waiting for Three.js' 'renderer.render()' call which happens last
+
+
+
 
 	// In addition to the default GUI on all demos, add any special GUI elements that this particular demo requires
 	
 	// scene/demo-specific uniforms go here     
 	rayTracingUniforms.uUVGridTexture = { value: UVGridTexture };
 	rayTracingUniforms.uRectangleInvMatrix = { value: new THREE.Matrix4() };
+	rayTracingUniforms.uDiskInvMatrix = { value: new THREE.Matrix4() };
+	rayTracingUniforms.uBoxInvMatrix = { value: new THREE.Matrix4() };
 	rayTracingUniforms.uDiffuseSphereInvMatrix = { value: new THREE.Matrix4() };
 	rayTracingUniforms.uMetalSphereInvMatrix = { value: new THREE.Matrix4() };
 	rayTracingUniforms.uCoatSphereInvMatrix = { value: new THREE.Matrix4() };
@@ -244,10 +306,13 @@ function initSceneData()
 	rayTracingUniforms.uParaboloidInvMatrix = { value: new THREE.Matrix4() };
 	rayTracingUniforms.uHyperboloidInvMatrix = { value: new THREE.Matrix4() };
 	rayTracingUniforms.uHyperbolicParaboloidInvMatrix = { value: new THREE.Matrix4() };
+	rayTracingUniforms.uCapsuleInvMatrix = { value: new THREE.Matrix4() };
 
 
 	// copy each shape's inverse matrix over to the GPU as a uniform for use in the ray tracing shader.
 	rayTracingUniforms.uRectangleInvMatrix.value.copy(groundRectangle.transform.matrixWorld).invert();
+	rayTracingUniforms.uDiskInvMatrix.value.copy(disk.transform.matrixWorld).invert();
+	rayTracingUniforms.uBoxInvMatrix.value.copy(box.transform.matrixWorld).invert();
 	rayTracingUniforms.uDiffuseSphereInvMatrix.value.copy(diffuseSphere.transform.matrixWorld).invert();
 	rayTracingUniforms.uMetalSphereInvMatrix.value.copy(metalSphere.transform.matrixWorld).invert();
 	rayTracingUniforms.uCoatSphereInvMatrix.value.copy(coatSphere.transform.matrixWorld).invert();
@@ -257,6 +322,7 @@ function initSceneData()
 	rayTracingUniforms.uParaboloidInvMatrix.value.copy(paraboloid.transform.matrixWorld).invert();
 	rayTracingUniforms.uHyperboloidInvMatrix.value.copy(hyperboloid.transform.matrixWorld).invert();
 	rayTracingUniforms.uHyperbolicParaboloidInvMatrix.value.copy(hyperbolicParaboloid.transform.matrixWorld).invert();
+	rayTracingUniforms.uCapsuleInvMatrix.value.copy(capsule.transform.matrixWorld).invert();
 
 } // end function initSceneData()
 
