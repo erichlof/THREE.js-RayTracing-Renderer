@@ -244,7 +244,8 @@ function FirstPersonCameraControls(camera)
 } // end function FirstPersonCameraControls(camera)
 
 
-
+// the 'type' function argument below is a string in JavaScript. Possible string values are:
+// "rectangle", "disk", "box", "sphere", "cylinder", "cone", "paraboloid", "hyperboloid", "hyperbolic paraboloid", "capsule"
 function RayTracingShape(type)
 {
 	this.type = type;
@@ -260,6 +261,9 @@ function RayTracingShape(type)
 		metalness: 0.0, // range: either 0.0 or 1.0 / default is 0.0 (not metal)
 		roughness: 0.0 // range: 0.0 to 1.0 / default is 0.0 (no roughness, perfectly smooth)
 	});
+
+	this.material.isCheckered = 0.0; // range: either 0.0 (not checkered) or 1.0 (checkered) / default is 0.0 (not checkered)
+	this.material.color2 = new THREE.Color(0.0, 0.0, 0.0); // .color2 is used if this shape will have a checkered material
 
 	this.uvScale = new THREE.Vector2(1, 1);
 
