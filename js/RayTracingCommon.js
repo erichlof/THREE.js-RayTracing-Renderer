@@ -301,6 +301,38 @@ float DiskIntersect( float radius, vec3 pos, vec3 normal, vec3 rayOrigin, vec3 r
 }
 `;
 
+THREE.ShaderChunk[ 'raytracing_unit_disk_intersect' ] = `
+
+//----------------------------------------------------------------------------------------------------------------
+float UnitDiskIntersect( vec3 rayOrigin, vec3 rayDirection, out float u, out float v )
+//----------------------------------------------------------------------------------------------------------------
+{
+	// for the unit disk that is located at the origin(vec3(0,0,0)), it's normal is vec3(0,0,1), which points directly towards our camera
+	float denom = dot(vec3(0,0,1), rayDirection);
+	// use the following for one-sided disk
+	//if (denom > 0.0) return INFINITY;
+
+	// normally it would be pOrO = diskPos - rayOrigin, and then t = dot(pOrO, normal) / denom
+	// but since this is a unit disk located at the world origin, pOrO = vec3(0,0,0) - rayOrigin, or just -rayOrigin
+        float t = dot(-rayOrigin, vec3(0,0,1)) / denom;
+	vec3 hit = rayOrigin + t * rayDirection;
+
+	if (t > 0.0) 
+	{
+		u = hit.x; // u will be in the range: -1 to +1
+		v = -hit.y; // v will be in the range: -1 to +1 (-hit.y flips the vertical so textures don't appear upside down)
+		if (u * u + v * v <= 1.0)
+		{
+			u = u * 0.5 + 0.5; // finally, bring u into the 0.0-1.0 range, for texture lookups
+			v = v * 0.5 + 0.5; // finally, bring v into the 0.0-1.0 range, for texture lookups
+			return t;
+		}	
+	} 
+	
+	return INFINITY;
+}
+`;
+
 THREE.ShaderChunk[ 'raytracing_rectangle_intersect' ] = `
 
 /* //----------------------------------------------------------------------------------------------------------------
@@ -700,9 +732,103 @@ float UnitHyperbolicParaboloidIntersect( vec3 ro, vec3 rd, out vec3 n )
 }
 `;
 
+THREE.ShaderChunk[ 'raytracing_unit_capsule_intersect' ] = `
+//------------------------------------------------------------------------------------------------------------
+float UnitCapsuleIntersect( float k, vec3 ro, vec3 rd, out vec3 normal )
+//------------------------------------------------------------------------------------------------------------
+{
+	vec3 hitPoint;
+	float t0, t1;
+	float t = INFINITY;
+
+	// intersect unit-radius sphere located at top opening of cylinder -> or vec3(0,k,0)
+	vec3 L = ro - vec3(0, k, 0);
+	float a = dot(rd, rd);
+	float b = 2.0 * dot(rd, L);
+	float c = dot(L, L) - 1.0;
+	solveQuadratic(a, b, c, t0, t1);
+	// first, try t0
+	if (t0 > 0.0 && t0 < t)
+	{
+		hitPoint = ro + rd * t0;
+		if (hitPoint.y >= k)
+		{
+			t = t0;
+			normal = vec3(hitPoint.x, hitPoint.y - k, hitPoint.z);
+		}	
+	}
+	// if t0 was invalid, try t1
+	if (t1 > 0.0 && t1 < t)
+	{
+		hitPoint = ro + rd * t1;
+		if (hitPoint.y >= k)
+		{
+			t = t1;
+			normal = vec3(hitPoint.x, hitPoint.y - k, hitPoint.z);
+		}	
+	}
+	
+	// now intersect unit-radius sphere located at bottom opening of cylinder -> or vec3(0,-k,0)
+	L = ro - vec3(0, -k, 0);
+	a = dot(rd, rd);
+	b = 2.0 * dot(rd, L);
+	c = dot(L, L) - 1.0;
+	solveQuadratic(a, b, c, t0, t1);
+	// first, try t0
+	if (t0 > 0.0 && t0 < t)
+	{
+		hitPoint = ro + rd * t0;
+		if (hitPoint.y <= -k)
+		{
+			t = t0;
+			normal = vec3(hitPoint.x, hitPoint.y + k, hitPoint.z);
+		}	
+	}
+	// if t0 was invalid, try t1
+	if (t1 > 0.0 && t1 < t)
+	{
+		hitPoint = ro + rd * t1;
+		if (hitPoint.y <= -k)
+		{
+			t = t1;
+			normal = vec3(hitPoint.x, hitPoint.y + k, hitPoint.z);
+		}	
+	}
+	
+	// implicit equation of a unit (radius of 1) cylinder, extending infinitely in the +Y and -Y directions:
+	// x^2 + z^2 - 1 = 0
+	a = rd.x * rd.x + rd.z * rd.z;
+    	b = 2.0 * (rd.x * ro.x + rd.z * ro.z);
+    	c = ro.x * ro.x + ro.z * ro.z - 1.0;
+	solveQuadratic(a, b, c, t0, t1);
+	// first, try t0
+	if (t0 > 0.0 && t0 < t)
+	{
+		hitPoint = ro + rd * t0;
+		if (abs(hitPoint.y) < k)
+		{
+			t = t0;
+			normal = vec3(hitPoint.x, 0.0, hitPoint.z);
+		}	
+	}
+	// if t0 was invalid, try t1
+	if (t1 > 0.0 && t1 < t)
+	{
+		hitPoint = ro + rd * t1;
+		if (abs(hitPoint.y) < k)
+		{
+			t = t1;
+			normal = vec3(hitPoint.x, 0.0, hitPoint.z);
+		}	
+	}
+	
+	return t;
+}
+`;
+
 THREE.ShaderChunk[ 'raytracing_unit_box_intersect' ] = `
 
-float UnitBoxIntersect( vec3 ro, vec3 rd, out vec3 n )
+float UnitBoxIntersect( vec3 ro, vec3 rd )
 {
 	vec3 invDir = 1.0 / rd;
 	vec3 near = (vec3(-1) - ro) * invDir; // unit radius box: vec3(-1,-1,-1) min corner
@@ -718,12 +844,12 @@ float UnitBoxIntersect( vec3 ro, vec3 rd, out vec3 n )
 
 	if (t0 > 0.0)
 	{
-		n = -sign(rd) * step(tmin.yzx, tmin) * step(tmin.zxy, tmin);
+		//n = -sign(rd) * step(tmin.yzx, tmin) * step(tmin.zxy, tmin);
 		return t0;
 	}
 	if (t1 > 0.0)
 	{
-		n = -sign(rd) * step(tmax, tmax.yzx) * step(tmax, tmax.zxy);
+		//n = -sign(rd) * step(tmax, tmax.yzx) * step(tmax, tmax.zxy);
 		return t1;
 	}
 	
