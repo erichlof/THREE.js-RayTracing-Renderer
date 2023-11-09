@@ -6,6 +6,8 @@ precision highp sampler2D;
 
 uniform sampler2D uUVGridTexture;
 uniform mat4 uRectangleInvMatrix;
+uniform mat4 uDiskInvMatrix;
+uniform mat4 uBoxInvMatrix;
 uniform mat4 uDiffuseSphereInvMatrix;
 uniform mat4 uMetalSphereInvMatrix;
 uniform mat4 uCoatSphereInvMatrix;
@@ -15,42 +17,51 @@ uniform mat4 uConeInvMatrix;
 uniform mat4 uParaboloidInvMatrix;
 uniform mat4 uHyperboloidInvMatrix;
 uniform mat4 uHyperbolicParaboloidInvMatrix;
+uniform mat4 uCapsuleInvMatrix;
 
+
+#define N_RECTANGLES 1
+#define N_DISKS 1
 #define N_BOXES 1
 #define N_SPHERES 4
-#define N_RECTANGLES 1
 #define N_CYLINDERS 1
 #define N_CONES 1
 #define N_PARABOLOIDS 1
 #define N_HYPERBOLOIDS 1
 #define N_HYPERBOLIC_PARABOLOIDS 1
+#define N_CAPSULES 1
 
 vec3 rayOrigin, rayDirection;
-// recorded intersection data:
-vec3 intersectionNormal;
-vec2 intersectionUV;
-int intersectionTextureID;
-int intersectionShapeIsClosed;
 
 struct Material { int type; int isCheckered; vec3 color; vec3 color2; float roughness; float IoR; int textureID; };
 struct UnitRectangle { vec2 uvScale; Material material; };
-struct Box { vec3 minCorner; vec3 maxCorner; vec2 uvScale; Material material; };
+struct UnitDisk { vec2 uvScale; Material material; };
+struct UnitBox { vec2 uvScale; Material material; };
 struct UnitSphere { vec2 uvScale; Material material; };
 struct UnitCylinder { vec2 uvScale; Material material; };
 struct UnitCone { vec2 uvScale; Material material; };
 struct UnitParaboloid { vec2 uvScale; Material material; };
 struct UnitHyperboloid { vec2 uvScale; Material material; };
 struct UnitHyperbolicParaboloid { vec2 uvScale; Material material; };
+struct UnitCapsule { vec2 uvScale; Material material; };
 
+// recorded intersection data:
+vec3 intersectionNormal;
+vec2 intersectionUV;
+int intersectionTextureID;
+int intersectionShapeIsClosed;
 Material intersectionMaterial;
+
 UnitRectangle rectangles[N_RECTANGLES];
-Box boxes[N_BOXES];
+UnitDisk disks[N_DISKS];
+UnitBox boxes[N_BOXES];
 UnitSphere spheres[N_SPHERES];
 UnitCylinder cylinders[N_CYLINDERS];
 UnitCone cones[N_CONES];
 UnitParaboloid paraboloids[N_PARABOLOIDS];
 UnitHyperboloid hyperboloids[N_HYPERBOLOIDS];
 UnitHyperbolicParaboloid hyperbolicParaboloids[N_HYPERBOLIC_PARABOLOIDS];
+UnitCapsule capsules[N_CAPSULES];
 
 
 #include <raytracing_random_functions>
@@ -59,13 +70,13 @@ UnitHyperbolicParaboloid hyperbolicParaboloids[N_HYPERBOLIC_PARABOLOIDS];
 
 #include <raytracing_calc_fresnel_reflectance>
 
-#include <raytracing_unit_rectangle_intersect>
-
-#include <raytracing_box_intersect>
-
 #include <raytracing_solve_quadratic>
 
-#include <raytracing_sphere_intersect>
+#include <raytracing_unit_rectangle_intersect>
+
+#include <raytracing_unit_disk_intersect>
+
+#include <raytracing_unit_box_intersect>
 
 #include <raytracing_unit_sphere_intersect>
 
@@ -78,6 +89,8 @@ UnitHyperbolicParaboloid hyperbolicParaboloids[N_HYPERBOLIC_PARABOLOIDS];
 #include <raytracing_unit_hyperboloid_intersect>
 
 #include <raytracing_unit_hyperbolic_paraboloid_intersect>
+
+#include <raytracing_unit_capsule_intersect>
 
 #include <raytracing_calc_UV_coordinates>
 
@@ -92,8 +105,8 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
         float d;
 	float t = INFINITY;
 	float u, v;
-	int isRayExiting = FALSE;
-
+	//int isRayExiting = FALSE;
+/* 
 	// When shadow rays are trying to intersect a small point light source, a tiny box makes a better shape to try and hit
 	// than a tiny sphere (due to floating-point precision error, some rays will hit while others will miss the small sphere from far away).  
 	// Viewers will still see a tiny sphere representing the point light, but shadow rays will instead "see" a tiny box in the same spot.
@@ -107,7 +120,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 			intersectionMaterial = boxes[0].material;
 		}
 	}
-
+ */
 	// transform ray into Unit Rectangle's object space
 	rObjOrigin = vec3( uRectangleInvMatrix * vec4(rayOrigin, 1.0) );
 	rObjDirection = vec3( uRectangleInvMatrix * vec4(rayDirection, 0.0) );
@@ -115,14 +128,30 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 	if (d < t)
 	{
 		t = d;
+		// for the untransformed unit rectangle, its normal is vec3(0,0,1), which points straight towards our camera  
 		normal = vec3(0,0,1);
 		intersectionNormal = transpose(mat3(uRectangleInvMatrix)) * normal;
 		intersectionMaterial = rectangles[0].material;
 		intersectionUV = vec2(u, v) * rectangles[0].uvScale;
 		intersectionShapeIsClosed = FALSE;
 	}
-	
-	
+
+	// transform ray into Unit Disk's object space
+	rObjOrigin = vec3( uDiskInvMatrix * vec4(rayOrigin, 1.0) );
+	rObjDirection = vec3( uDiskInvMatrix * vec4(rayDirection, 0.0) );
+	d = UnitDiskIntersect( rObjOrigin, rObjDirection, u, v );
+	if (d < t)
+	{
+		t = d;
+		// for the untransformed unit disk, its normal is vec3(0,0,1), which points straight towards our camera  
+		normal = vec3(0,0,1);
+		intersectionNormal = transpose(mat3(uDiskInvMatrix)) * normal;
+		intersectionMaterial = disks[0].material;
+		intersectionUV = vec2(u, v) * disks[0].uvScale;
+		intersectionShapeIsClosed = FALSE;
+	}
+
+
 	// transform ray into Diffuse Unit Sphere's object space
 	rObjOrigin = vec3( uDiffuseSphereInvMatrix * vec4(rayOrigin, 1.0) );
 	rObjDirection = vec3( uDiffuseSphereInvMatrix * vec4(rayDirection, 0.0) );
@@ -247,6 +276,73 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 		intersectionMaterial = hyperbolicParaboloids[0].material;
 		intersectionUV = vec2(intersectionPoint.x, intersectionPoint.z) * hyperbolicParaboloids[0].uvScale;
 		intersectionShapeIsClosed = FALSE;
+	}
+
+	// transform ray into Unit Capsule's object space
+	rObjOrigin = vec3( uCapsuleInvMatrix * vec4(rayOrigin, 1.0) );
+	rObjDirection = vec3( uCapsuleInvMatrix * vec4(rayDirection, 0.0) );
+	d = UnitCapsuleIntersect(1.0, rObjOrigin, rObjDirection, normal);
+	if (d > 0.0 && d < t)
+	{
+		t = d;
+		intersectionPoint = rObjOrigin + t * rObjDirection;
+		intersectionNormal = transpose(mat3(uCapsuleInvMatrix)) * normal;
+		intersectionMaterial = capsules[0].material;
+		intersectionUV = calcUnitCylinderUV(intersectionPoint) * capsules[0].uvScale;
+		intersectionShapeIsClosed = TRUE;
+	}
+
+
+	// transform ray into Unit Box's object space
+	rObjOrigin = vec3( uBoxInvMatrix * vec4(rayOrigin, 1.0) );
+	rObjDirection = vec3( uBoxInvMatrix * vec4(rayDirection, 0.0) );
+	d = UnitBoxIntersect( rObjOrigin, rObjDirection );
+	if (d > 0.0 && d < t)
+	{
+		t = d;
+		intersectionPoint = rObjOrigin + t * rObjDirection; // intersection in box's object space, vec3(-1,-1,-1) to vec3(+1,+1,+1)
+		vec3 boxScale = vec3(4,4,8);
+		if (abs(intersectionPoint.x) > abs(intersectionPoint.y) && abs(intersectionPoint.x) >= abs(intersectionPoint.z))
+		{
+			normal = vec3(1, 0, 0);
+			intersectionUV = vec2(-intersectionPoint.z, -intersectionPoint.y);
+			if (intersectionPoint.x < 0.0)
+			{
+				normal = vec3(-1, 0, 0);
+				intersectionUV = vec2(intersectionPoint.z, -intersectionPoint.y);
+			}
+			intersectionUV = intersectionUV * 0.5 + 0.5;
+			intersectionUV *= vec2(boxScale.z, boxScale.y);
+		}
+		else if (abs(intersectionPoint.y) > abs(intersectionPoint.x) && abs(intersectionPoint.y) >= abs(intersectionPoint.z))
+		{
+			normal = vec3(0, 1, 0);
+			intersectionUV = vec2(intersectionPoint.x, intersectionPoint.z);
+			if (intersectionPoint.y < 0.0)
+			{
+				normal = vec3(0,-1, 0);
+				intersectionUV = vec2(intersectionPoint.x, -intersectionPoint.z);
+			}
+			intersectionUV = intersectionUV * 0.5 + 0.5;
+			intersectionUV *= vec2(boxScale.x, boxScale.z);
+		}
+		else
+		{
+			normal = vec3(0, 0, 1);
+			intersectionUV = vec2(intersectionPoint.x, -intersectionPoint.y);
+			if (intersectionPoint.z < 0.0)
+			{
+				normal = vec3(0, 0,-1);
+				intersectionUV = vec2(-intersectionPoint.x, -intersectionPoint.y);
+			}
+			intersectionUV = intersectionUV * 0.5 + 0.5;
+			intersectionUV *= vec2(boxScale.x, boxScale.y);
+		}
+			
+		intersectionNormal = transpose(mat3(uBoxInvMatrix)) * normal;
+		intersectionMaterial = boxes[0].material;
+		intersectionUV *= boxes[0].uvScale;
+		intersectionShapeIsClosed = TRUE;
 	}
 
 
@@ -417,6 +513,11 @@ vec3 RayTrace()
 		// the directionToLight vector will point from the intersected surface either towards the Sun, or up to the point light position
 		directionToLight = (sceneUsesDirectionalLight == TRUE) ? directionToSunlight : normalize(pointLightPosition - intersectionPoint);
 
+
+		if (intersectionMaterial.isCheckered == TRUE)
+		{
+			intersectionMaterial.color = mod(floor(intersectionUV.x) + floor(intersectionUV.y), 2.0) == 0.0 ? intersectionMaterial.color : intersectionMaterial.color2;
+		}
 		// if the intersection material has a valid texture ID (> -1), go ahead and sample the texture at the hit material's UV coordinates
 		if (intersectionMaterial.textureID > -1)
 		{
@@ -425,10 +526,6 @@ vec3 RayTrace()
 			intersectionMaterial.color *= textureColor; // now that the texture color is in linear space, we can do simple math with it, like multiplying and adding
 		}
 
-		if (intersectionMaterial.isCheckered == TRUE)
-		{
-			intersectionMaterial.color = mod(floor(intersectionUV.x) + floor(intersectionUV.y), 2.0) == 0.0 ? intersectionMaterial.color : intersectionMaterial.color2;
-		}
 		
                 if (intersectionMaterial.type == PHONG)
                 {
@@ -608,10 +705,10 @@ void SetupScene(void)
 	Material glassMaterial = Material(TRANSPARENT, FALSE, vec3(0.4, 1.0, 0.6), vec3(0.0, 0.0, 0.0), 0.0, 1.5, -1 );
 	Material grayBlackCheckerMaterial = Material(CLEARCOAT, TRUE, vec3(0.5), vec3(0.001, 0.001, 0.001), 0.0, 1.4, -1 );
 	Material whiteRedCheckerMaterial = Material(CLEARCOAT, TRUE, vec3(0.8), vec3(0.5, 0.01, 0.01), 0.0, 1.4, -1 );
-	// vec3 pointLightPosition = vec3(4, 10, 5);
-	// boxes[0] = Box(pointLightPosition - vec3(0.5), pointLightPosition + vec3(0.5), vec2(1, 1), pointLightMaterial);
-
+	
 	rectangles[0] = UnitRectangle(vec2(300, 300), grayBlackCheckerMaterial);
+	disks[0] = UnitDisk(vec2(1, 1), uvGridMaterial);
+	boxes[0] = UnitBox(vec2(1, 1), whiteRedCheckerMaterial); // (2,2)
 
 	spheres[0] = UnitSphere(vec2(2, 1), redMaterial);
 	spheres[1] = UnitSphere(vec2(2, 1), metalMaterial);
@@ -620,11 +717,11 @@ void SetupScene(void)
 
 	cylinders[0] = UnitCylinder(vec2(2, 1), uvGridMaterial);
 	///cylinders[0].material.IoR = 1.3; // decrease the shininess just a bit
-
 	cones[0] = UnitCone(vec2(8, 5), whiteRedCheckerMaterial);
 	paraboloids[0] = UnitParaboloid(vec2(8, 5), whiteRedCheckerMaterial);
 	hyperboloids[0] = UnitHyperboloid(vec2(8, 6), whiteRedCheckerMaterial);
 	hyperbolicParaboloids[0] = UnitHyperbolicParaboloid(vec2(4, 4), whiteRedCheckerMaterial);
+	capsules[0] = UnitCapsule(vec2(8, 3), whiteRedCheckerMaterial);
 }
 
 
