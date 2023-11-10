@@ -6,6 +6,7 @@ let shearMatrix = new THREE.Matrix4();
 let groundRectangle, disk, box;
 let diffuseSphere, metalSphere, coatSphere, glassSphere;
 let cylinder, cone, paraboloid, hyperboloid, hyperbolicParaboloid, capsule;
+let cappedCylinder, cappedCone, cappedParaboloid;
 
 
 
@@ -193,6 +194,25 @@ function initSceneData()
 	cylinder.transform.updateMatrixWorld(true); // 'true' forces a matrix update now, rather than waiting for Three.js' 'renderer.render()' call which happens last
 	
 
+	// checkered clearcoat capped cylinder
+	cappedCylinder = new RayTracingShape("capped cylinder");
+
+	cappedCylinder.material.color.set(1.0, 1.0, 1.0); // (r,g,b) range: 0.0 to 1.0 / default is rgb(1,1,1) white
+	cappedCylinder.material.opacity = 1.0; // range: 0.0 to 1.0 / default is 1.0 (fully opaque)
+	cappedCylinder.material.ior = 1.3; // range: 1.0(air) to 2.33(diamond) / default is 1.5(glass) / other useful ior is 1.33(water)
+	cappedCylinder.material.clearcoat = 1.0; // range: 0.0 to 1.0 / default is 0.0 (no clearcoat)
+	cappedCylinder.material.metalness = 0.0; // range: either 0.0 or 1.0 / default is 0.0 (not metal)
+	cappedCylinder.material.roughness = 0.0; // range: 0.0 to 1.0 / default is 0.0 (no roughness, perfectly smooth)
+
+	cappedCylinder.uvScale.set(2, 1); // if checkered or using a texture, how many times should the uv's repeat in the X axis / Y axis?
+
+	cappedCylinder.transform.scale.set(1.5, 3, 1.5);
+	cappedCylinder.transform.position.set(-1, 1.5, -13);
+	cappedCylinder.transform.rotation.set(0, 0, Math.PI * 0.5);
+	// after specifying any desired transforms (scale, position, rotation), we must call updateMatrixWorld() to actually fill in the shape's matrix with these new values
+	cappedCylinder.transform.updateMatrixWorld(true); // 'true' forces a matrix update now, rather than waiting for Three.js' 'renderer.render()' call which happens last
+	
+
 	// checkered clearcoat cone
 	cone = new RayTracingShape("cone");
 
@@ -212,6 +232,25 @@ function initSceneData()
 	cone.transform.updateMatrixWorld(true); // 'true' forces a matrix update now, rather than waiting for Three.js' 'renderer.render()' call which happens last
 	
 
+	// checkered clearcoat capped cone
+	cappedCone = new RayTracingShape("capped cone");
+
+	cappedCone.material.color.set(1.0, 1.0, 1.0); // (r,g,b) range: 0.0 to 1.0 / default is rgb(1,1,1) white
+	cappedCone.material.opacity = 1.0; // range: 0.0 to 1.0 / default is 1.0 (fully opaque)
+	cappedCone.material.ior = 1.3; // range: 1.0(air) to 2.33(diamond) / default is 1.5(glass) / other useful ior is 1.33(water)
+	cappedCone.material.clearcoat = 1.0; // range: 0.0 to 1.0 / default is 0.0 (no clearcoat)
+	cappedCone.material.metalness = 0.0; // range: either 0.0 or 1.0 / default is 0.0 (not metal)
+	cappedCone.material.roughness = 0.0; // range: 0.0 to 1.0 / default is 0.0 (no roughness, perfectly smooth)
+
+	cappedCone.uvScale.set(2, 1); // if checkered or using a texture, how many times should the uv's repeat in the X axis / Y axis?
+
+	cappedCone.transform.scale.set(2, 2, 2);
+	cappedCone.transform.position.set(-17, 1.46, 4);
+	cappedCone.transform.rotation.set(0, 0, Math.PI * 0.577);
+	// after specifying any desired transforms (scale, position, rotation), we must call updateMatrixWorld() to actually fill in the shape's matrix with these new values
+	cappedCone.transform.updateMatrixWorld(true); // 'true' forces a matrix update now, rather than waiting for Three.js' 'renderer.render()' call which happens last
+	
+
 	// checkered clearcoat paraboloid
 	paraboloid = new RayTracingShape("paraboloid");
 
@@ -229,6 +268,25 @@ function initSceneData()
 	//paraboloid.transform.rotation.set(0, 0, Math.PI * 0.25);
 	// after specifying any desired transforms (scale, position, rotation), we must call updateMatrixWorld() to actually fill in the shape's matrix with these new values
 	paraboloid.transform.updateMatrixWorld(true); // 'true' forces a matrix update now, rather than waiting for Three.js' 'renderer.render()' call which happens last
+	
+
+	// checkered clearcoat capped paraboloid
+	cappedParaboloid = new RayTracingShape("capped paraboloid");
+
+	cappedParaboloid.material.color.set(1.0, 1.0, 1.0); // (r,g,b) range: 0.0 to 1.0 / default is rgb(1,1,1) white
+	cappedParaboloid.material.opacity = 1.0; // range: 0.0 to 1.0 / default is 1.0 (fully opaque)
+	cappedParaboloid.material.ior = 1.4; // range: 1.0(air) to 2.33(diamond) / default is 1.5(glass) / other useful ior is 1.33(water)
+	cappedParaboloid.material.clearcoat = 1.0; // range: 0.0 to 1.0 / default is 0.0 (no clearcoat)
+	cappedParaboloid.material.metalness = 0.0; // range: either 0.0 or 1.0 / default is 0.0 (not metal)
+	cappedParaboloid.material.roughness = 0.0; // range: 0.0 to 1.0 / default is 0.0 (no roughness, perfectly smooth)
+
+	cappedParaboloid.uvScale.set(2, 1); // if checkered or using a texture, how many times should the uv's repeat in the X axis / Y axis?
+
+	cappedParaboloid.transform.scale.set(2, 2, 2);
+	cappedParaboloid.transform.position.set(-9, 2, 0);
+	cappedParaboloid.transform.rotation.set(0, 0, Math.PI);
+	// after specifying any desired transforms (scale, position, rotation), we must call updateMatrixWorld() to actually fill in the shape's matrix with these new values
+	cappedParaboloid.transform.updateMatrixWorld(true); // 'true' forces a matrix update now, rather than waiting for Three.js' 'renderer.render()' call which happens last
 	
 
 	// checkered clearcoat hyperboloid
@@ -302,8 +360,11 @@ function initSceneData()
 	rayTracingUniforms.uCoatSphereInvMatrix = { value: new THREE.Matrix4() };
 	rayTracingUniforms.uGlassSphereInvMatrix = { value: new THREE.Matrix4() };
 	rayTracingUniforms.uCylinderInvMatrix = { value: new THREE.Matrix4() };
+	rayTracingUniforms.uCappedCylinderInvMatrix = { value: new THREE.Matrix4() };
 	rayTracingUniforms.uConeInvMatrix = { value: new THREE.Matrix4() };
+	rayTracingUniforms.uCappedConeInvMatrix = { value: new THREE.Matrix4() };
 	rayTracingUniforms.uParaboloidInvMatrix = { value: new THREE.Matrix4() };
+	rayTracingUniforms.uCappedParaboloidInvMatrix = { value: new THREE.Matrix4() };
 	rayTracingUniforms.uHyperboloidInvMatrix = { value: new THREE.Matrix4() };
 	rayTracingUniforms.uHyperbolicParaboloidInvMatrix = { value: new THREE.Matrix4() };
 	rayTracingUniforms.uCapsuleInvMatrix = { value: new THREE.Matrix4() };
@@ -318,8 +379,11 @@ function initSceneData()
 	rayTracingUniforms.uCoatSphereInvMatrix.value.copy(coatSphere.transform.matrixWorld).invert();
 	rayTracingUniforms.uGlassSphereInvMatrix.value.copy(glassSphere.transform.matrixWorld).invert();
 	rayTracingUniforms.uCylinderInvMatrix.value.copy(cylinder.transform.matrixWorld).invert();
+	rayTracingUniforms.uCappedCylinderInvMatrix.value.copy(cappedCylinder.transform.matrixWorld).invert();
 	rayTracingUniforms.uConeInvMatrix.value.copy(cone.transform.matrixWorld).invert();
+	rayTracingUniforms.uCappedConeInvMatrix.value.copy(cappedCone.transform.matrixWorld).invert();
 	rayTracingUniforms.uParaboloidInvMatrix.value.copy(paraboloid.transform.matrixWorld).invert();
+	rayTracingUniforms.uCappedParaboloidInvMatrix.value.copy(cappedParaboloid.transform.matrixWorld).invert();
 	rayTracingUniforms.uHyperboloidInvMatrix.value.copy(hyperboloid.transform.matrixWorld).invert();
 	rayTracingUniforms.uHyperbolicParaboloidInvMatrix.value.copy(hyperbolicParaboloid.transform.matrixWorld).invert();
 	rayTracingUniforms.uCapsuleInvMatrix.value.copy(capsule.transform.matrixWorld).invert();
