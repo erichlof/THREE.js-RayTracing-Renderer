@@ -302,46 +302,16 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 		t = d;
 		intersectionPoint = rObjOrigin + t * rObjDirection; // intersection in box's object space, vec3(-1,-1,-1) to vec3(+1,+1,+1)
 		vec3 boxScale = vec3(4,4,8);
+		// start out with default Z normal of (0,0,-1) or (0,0,+1)
+		normal = vec3(0, 0, intersectionPoint.z);
 		if (abs(intersectionPoint.x) > abs(intersectionPoint.y) && abs(intersectionPoint.x) >= abs(intersectionPoint.z))
-		{
-			normal = vec3(1, 0, 0);
-			intersectionUV = vec2(-intersectionPoint.z, -intersectionPoint.y);
-			if (intersectionPoint.x < 0.0)
-			{
-				normal = vec3(-1, 0, 0);
-				intersectionUV = vec2(intersectionPoint.z, -intersectionPoint.y);
-			}
-			intersectionUV = intersectionUV * 0.5 + 0.5;
-			intersectionUV *= vec2(boxScale.z, boxScale.y);
-		}
+			normal = vec3(intersectionPoint.x, 0, 0);	
 		else if (abs(intersectionPoint.y) > abs(intersectionPoint.x) && abs(intersectionPoint.y) >= abs(intersectionPoint.z))
-		{
-			normal = vec3(0, 1, 0);
-			intersectionUV = vec2(intersectionPoint.x, intersectionPoint.z);
-			if (intersectionPoint.y < 0.0)
-			{
-				normal = vec3(0,-1, 0);
-				intersectionUV = vec2(intersectionPoint.x, -intersectionPoint.z);
-			}
-			intersectionUV = intersectionUV * 0.5 + 0.5;
-			intersectionUV *= vec2(boxScale.x, boxScale.z);
-		}
-		else
-		{
-			normal = vec3(0, 0, 1);
-			intersectionUV = vec2(intersectionPoint.x, -intersectionPoint.y);
-			if (intersectionPoint.z < 0.0)
-			{
-				normal = vec3(0, 0,-1);
-				intersectionUV = vec2(-intersectionPoint.x, -intersectionPoint.y);
-			}
-			intersectionUV = intersectionUV * 0.5 + 0.5;
-			intersectionUV *= vec2(boxScale.x, boxScale.y);
-		}
+			normal = vec3(0, intersectionPoint.y, 0);
 			
 		intersectionNormal = transpose(mat3(uBoxInvMatrix)) * normal;
 		intersectionMaterial = boxes[0].material;
-		intersectionUV *= boxes[0].uvScale;
+		intersectionUV = calcUnitBoxUV(intersectionPoint, normal, boxScale) * boxes[0].uvScale;
 		intersectionShapeIsClosed = TRUE;
 	}
 
