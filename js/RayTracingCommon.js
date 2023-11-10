@@ -251,8 +251,6 @@ vec2 calcUnitCylinderUV(vec3 pointOnUnitCylinder)
 vec2 calcUnitBoxUV(vec3 pointOnUnitBox, vec3 normal, vec3 boxScale)
 { // this is a simple tri-planar mapping: if the box normal points to the right or left, use z and x as uv coordinates.
 // If normal points up or down, use x and z as uv coordinates. If normal points forward and backward, use x and y as uv coordinates.
-	vec2 uv;
-
 	     if (normal.z > 0.0)
 		return (vec2( pointOnUnitBox.x, -pointOnUnitBox.y) * 0.5 + 0.5) * vec2(boxScale.x, boxScale.y);
 	else if (normal.z < 0.0) 
@@ -619,24 +617,89 @@ float UnitCylinderIntersect( vec3 ro, vec3 rd, out vec3 n )
 }
 `;
 
-THREE.ShaderChunk[ 'raytracing_unit_cone_intersect' ] = `
+THREE.ShaderChunk[ 'raytracing_unit_capped_cylinder_intersect' ] = `
 
-float UnitConeIntersect( vec3 ro, vec3 rd, out vec3 n )
+float UnitCappedCylinderIntersect( vec3 ro, vec3 rd, out vec3 n )
 {
-	// the '(ro.y - h)' parts below truncate the top half of the double-cone, leaving a single cone with apex at top
 	vec3 hitPoint;
 	float t0, t1;
-	float h = 1.0;	      // 0.25 below makes the circular base of cone end up as unit radius of 1.0
-	float a = rd.x * rd.x - (0.25 * rd.y * rd.y) + rd.z * rd.z;
-	float b = 2.0 * (rd.x * ro.x - (0.25 * rd.y * (ro.y - h)) + rd.z * ro.z);
-	float c = ro.x * ro.x - (0.25 * (ro.y - h) * (ro.y - h)) + ro.z * ro.z;
+	float t = INFINITY;
+	float tmp;
+
+	float a = rd.x * rd.x + rd.z * rd.z;
+	float b = 2.0 * (rd.x * ro.x + rd.z * ro.z);
+	float c = (ro.x * ro.x + ro.z * ro.z) - 0.99;// 0.99 prevents clipping at cylinder walls 
+	solveQuadratic(a, b, c, t0, t1);
+	
+	// first, try t0
+	hitPoint = ro + rd * t0;
+	if (t0 > 0.0 && t0 < t && abs(hitPoint.y) <= 1.0)
+	{
+		t = t0;
+		n = vec3(hitPoint.x, 0.0, hitPoint.z);
+	}
+	// if t0 was invalid, try t1
+	hitPoint = ro + rd * t1;
+	if (t1 > 0.0 && t1 < t && abs(hitPoint.y) <= 1.0)
+	{
+		t = t1;
+		n = vec3(hitPoint.x, 0.0, hitPoint.z);
+	}
+	// now intersect top and bottom disk caps
+	// start by assuming ray is pointing downward
+	t0 = (ro.y - 1.0) / -rd.y;
+	t1 = (ro.y + 1.0) / -rd.y;
+	if (rd.y > 0.0) // but if ray is pointing upward, then swap t0/t1
+	{
+		tmp = t0;
+		t0 = t1;
+		t1 = tmp;
+	}
+
+	// first, try t0
+	hitPoint = ro + rd * t0;
+	if (t0 > 0.0 && t0 < t && hitPoint.x * hitPoint.x + hitPoint.z * hitPoint.z <= 1.0) // unit radius disk
+	{
+		t = t0;
+		n = vec3(0, 1, 0);
+	}
+	// if t0 was invalid, try t1
+	hitPoint = ro + rd * t1;
+	if (t1 > 0.0 && t1 < t && hitPoint.x * hitPoint.x + hitPoint.z * hitPoint.z <= 1.0) // unit radius disk
+	{
+		t = t1;
+		n = vec3(0, 1, 0);
+	}
+
+	n = dot(rd, n) < 0.0 ? n : -n;
+	return t;
+}
+`;
+
+THREE.ShaderChunk[ 'raytracing_unit_cone_intersect' ] = `
+
+float UnitConeIntersect( float apexRadius, vec3 ro, vec3 rd, out vec3 n )
+{
+	
+	vec3 hitPoint;
+	float t0, t1;
+	float k = 1.0 - apexRadius; // k is the inverse of the cone's opening width (apex radius)
+	// valid range for k: 0.01 to 1.0 (a value of 1.0 makes a cone with a sharp, pointed apex)
+	k = clamp(k, 0.01, 1.0);
+	
+	float j = 1.0 / k;
+	// the '(ro.y - h)' parts below truncate the top half of the double-cone, leaving a single cone with apex at top
+	float h = j * 2.0 - 1.0;		   // (k * 0.25) makes the normal cone's bottom circular base have a unit radius of 1.0
+	float a = j * rd.x * rd.x + j * rd.z * rd.z - (k * 0.25) * rd.y * rd.y;
+    	float b = 2.0 * (j * rd.x * ro.x + j * rd.z * ro.z - (k * 0.25) * rd.y * (ro.y - h));
+    	float c = j * ro.x * ro.x + j * ro.z * ro.z - (k * 0.25) * (ro.y - h) * (ro.y - h);
 	solveQuadratic(a, b, c, t0, t1);
 	
 	// first, try t0
 	hitPoint = ro + rd * t0;
 	if (t0 > 0.0 && abs(hitPoint.y) <= 1.0)
 	{
-		n = vec3(hitPoint.x, (h - hitPoint.y) * 0.25, hitPoint.z);
+		n = vec3(j * hitPoint.x, (k * 0.25) * (h - hitPoint.y), j * hitPoint.z);
 		n = dot(rd, n) < 0.0 ? n : -n;
 		return t0;
 	}
@@ -644,12 +707,84 @@ float UnitConeIntersect( vec3 ro, vec3 rd, out vec3 n )
 	hitPoint = ro + rd * t1;
 	if (t1 > 0.0 && abs(hitPoint.y) <= 1.0)
 	{
-		n = vec3(hitPoint.x, (h - hitPoint.y) * 0.25, hitPoint.z);
+		n = vec3(j * hitPoint.x, (k * 0.25) * (h - hitPoint.y), j * hitPoint.z);
 		n = dot(rd, n) < 0.0 ? n : -n;
 		return t1;
 	}
 
 	return 0.0;
+}
+`;
+
+THREE.ShaderChunk[ 'raytracing_unit_capped_cone_intersect' ] = `
+
+float UnitCappedConeIntersect( float apexRadius, vec3 ro, vec3 rd, out vec3 n )
+{
+	vec3 hitPoint;
+	float t0, t1;
+	float t = INFINITY;
+	float rad0, rad1;
+	float tmp;
+
+	float k = 1.0 - apexRadius; // k is the inverse of the cone's opening width (apex radius)
+	// valid range for k: 0.01 to 1.0 (a value of 1.0 makes a cone with a sharp, pointed apex)
+	k = clamp(k, 0.01, 1.0);
+	
+	float j = 1.0 / k;
+	// the '(ro.y - h)' parts below truncate the top half of the double-cone, leaving a single cone with apex at top
+	float h = j * 2.0 - 1.0;		   // (k * 0.25) makes the normal cone's bottom circular base have a unit radius of 1.0
+	float a = j * rd.x * rd.x + j * rd.z * rd.z - (k * 0.25) * rd.y * rd.y;
+    	float b = 2.0 * (j * rd.x * ro.x + j * rd.z * ro.z - (k * 0.25) * rd.y * (ro.y - h));
+    	float c = j * ro.x * ro.x + j * ro.z * ro.z - (k * 0.25) * (ro.y - h) * (ro.y - h);
+	solveQuadratic(a, b, c, t0, t1);
+	
+	// first, try t0
+	hitPoint = ro + rd * t0;
+	if (t0 > 0.0 && t0 < t && abs(hitPoint.y) <= 1.0)
+	{
+		t = t0;
+		n = vec3(j * hitPoint.x, (k * 0.25) * (h - hitPoint.y), j * hitPoint.z);
+	}
+	// if t0 was invalid, try t1
+	hitPoint = ro + rd * t1;
+	if (t1 > 0.0 && t1 < t && abs(hitPoint.y) <= 1.0)
+	{
+		t = t1;
+		n = vec3(j * hitPoint.x, (k * 0.25) * (h - hitPoint.y), j * hitPoint.z);
+	}
+	// now intersect top and bottom disk caps
+	// start by assuming ray is pointing downward
+	t0 = (ro.y - 1.0) / -rd.y;
+	t1 = (ro.y + 1.0) / -rd.y;
+	rad0 = (1.0 - k) * (1.0 - k); // top cap's size is relative to k
+	rad1 = 1.0; // bottom cap is unit radius
+	if (rd.y > 0.0) // but if ray is pointing upward, then swap t0/t1 and swap rad0/rad1
+	{
+		tmp = t0;
+		t0 = t1;
+		t1 = tmp;
+		tmp = rad0;
+		rad0 = rad1;
+		rad1 = tmp;
+	}
+
+	// first, try t0
+	hitPoint = ro + rd * t0;
+	if (t0 > 0.0 && t0 < t && hitPoint.x * hitPoint.x + hitPoint.z * hitPoint.z <= rad0)
+	{
+		t = t0;
+		n = vec3(0, 1, 0);
+	}
+	// if t0 was invalid, try t1
+	hitPoint = ro + rd * t1;
+	if (t1 > 0.0 && t1 < t && hitPoint.x * hitPoint.x + hitPoint.z * hitPoint.z <= rad1)
+	{
+		t = t1;
+		n = vec3(0, 1, 0);
+	}
+
+	n = dot(rd, n) < 0.0 ? n : -n;
+	return t;
 }
 `;
 
@@ -683,6 +818,49 @@ float UnitParaboloidIntersect( vec3 ro, vec3 rd, out vec3 n )
 	}
 
 	return 0.0;
+}
+`;
+
+THREE.ShaderChunk[ 'raytracing_unit_capped_paraboloid_intersect' ] = `
+
+float UnitCappedParaboloidIntersect( vec3 ro, vec3 rd, out vec3 n )
+{
+	vec3 hitPoint;
+	float t0, t1;
+	float t = INFINITY;
+	
+	float k = 0.5;
+
+	float a = rd.x * rd.x + rd.z * rd.z;
+    	float b = 2.0 * (rd.x * ro.x + rd.z * ro.z) + k * rd.y;
+    	float c = ro.x * ro.x + (k * (ro.y - 1.0)) + ro.z * ro.z; 
+	solveQuadratic(a, b, c, t0, t1);
+	
+	// first, try t0
+	hitPoint = ro + rd * t0;
+	if (t0 > 0.0 && t0 < t && abs(hitPoint.y) <= 1.0)
+	{
+		t = t0;
+		n = vec3(2.0 * hitPoint.x, k, 2.0 * hitPoint.z);
+	}
+	// if t0 was invalid, try t1
+	hitPoint = ro + rd * t1;
+	if (t1 > 0.0 && t1 < t && abs(hitPoint.y) <= 1.0)
+	{
+		t = t1;
+		n = vec3(2.0 * hitPoint.x, k, 2.0 * hitPoint.z);
+	}
+	// now intersect unit-radius disk located at bottom base opening of unit paraboloid shape
+	t0 = (ro.y + 1.0) / -rd.y;
+	hitPoint = ro + rd * t0;
+	if (t0 > 0.0 && t0 < t && hitPoint.x * hitPoint.x + hitPoint.z * hitPoint.z <= 1.0) // disk with unit radius
+	{
+		t = t0;
+		n = vec3(0,1,0);
+	}
+
+	n = dot(rd, n) < 0.0 ? n : -n;
+	return t;
 }
 `;
 
