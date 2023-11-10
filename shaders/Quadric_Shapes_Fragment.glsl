@@ -13,8 +13,11 @@ uniform mat4 uMetalSphereInvMatrix;
 uniform mat4 uCoatSphereInvMatrix;
 uniform mat4 uGlassSphereInvMatrix;
 uniform mat4 uCylinderInvMatrix;
+uniform mat4 uCappedCylinderInvMatrix;
 uniform mat4 uConeInvMatrix;
+uniform mat4 uCappedConeInvMatrix;
 uniform mat4 uParaboloidInvMatrix;
+uniform mat4 uCappedParaboloidInvMatrix;
 uniform mat4 uHyperboloidInvMatrix;
 uniform mat4 uHyperbolicParaboloidInvMatrix;
 uniform mat4 uCapsuleInvMatrix;
@@ -25,8 +28,11 @@ uniform mat4 uCapsuleInvMatrix;
 #define N_BOXES 1
 #define N_SPHERES 4
 #define N_CYLINDERS 1
+#define N_CAPPED_CYLINDERS 1
 #define N_CONES 1
+#define N_CAPPED_CONES 1
 #define N_PARABOLOIDS 1
+#define N_CAPPED_PARABOLOIDS 1
 #define N_HYPERBOLOIDS 1
 #define N_HYPERBOLIC_PARABOLOIDS 1
 #define N_CAPSULES 1
@@ -39,8 +45,11 @@ struct UnitDisk { vec2 uvScale; Material material; };
 struct UnitBox { vec2 uvScale; Material material; };
 struct UnitSphere { vec2 uvScale; Material material; };
 struct UnitCylinder { vec2 uvScale; Material material; };
+struct UnitCappedCylinder { vec2 uvScale; Material material; };
 struct UnitCone { vec2 uvScale; Material material; };
+struct UnitCappedCone { vec2 uvScale; Material material; };
 struct UnitParaboloid { vec2 uvScale; Material material; };
+struct UnitCappedParaboloid { vec2 uvScale; Material material; };
 struct UnitHyperboloid { vec2 uvScale; Material material; };
 struct UnitHyperbolicParaboloid { vec2 uvScale; Material material; };
 struct UnitCapsule { vec2 uvScale; Material material; };
@@ -57,8 +66,11 @@ UnitDisk disks[N_DISKS];
 UnitBox boxes[N_BOXES];
 UnitSphere spheres[N_SPHERES];
 UnitCylinder cylinders[N_CYLINDERS];
+UnitCappedCylinder cappedCylinders[N_CAPPED_CYLINDERS];
 UnitCone cones[N_CONES];
+UnitCappedCone cappedCones[N_CAPPED_CONES];
 UnitParaboloid paraboloids[N_PARABOLOIDS];
+UnitCappedParaboloid cappedParaboloids[N_CAPPED_PARABOLOIDS];
 UnitHyperboloid hyperboloids[N_HYPERBOLOIDS];
 UnitHyperbolicParaboloid hyperbolicParaboloids[N_HYPERBOLIC_PARABOLOIDS];
 UnitCapsule capsules[N_CAPSULES];
@@ -82,9 +94,15 @@ UnitCapsule capsules[N_CAPSULES];
 
 #include <raytracing_unit_cylinder_intersect>
 
+#include <raytracing_unit_capped_cylinder_intersect>
+
 #include <raytracing_unit_cone_intersect>
 
+#include <raytracing_unit_capped_cone_intersect>
+
 #include <raytracing_unit_paraboloid_intersect>
+
+#include <raytracing_unit_capped_paraboloid_intersect>
 
 #include <raytracing_unit_hyperboloid_intersect>
 
@@ -222,10 +240,30 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 		intersectionShapeIsClosed = FALSE;
 	}
 
+	// transform ray into Unit Capped Cylinder's object space
+	rObjOrigin = vec3( uCappedCylinderInvMatrix * vec4(rayOrigin, 1.0) );
+	rObjDirection = vec3( uCappedCylinderInvMatrix * vec4(rayDirection, 0.0) );
+	d = UnitCappedCylinderIntersect(rObjOrigin, rObjDirection, normal);
+	if (d > 0.0 && d < t)
+	{
+		t = d;
+		intersectionPoint = rObjOrigin + t * rObjDirection;
+		intersectionNormal = transpose(mat3(uCappedCylinderInvMatrix)) * normal;
+		intersectionMaterial = cappedCylinders[0].material;
+		intersectionUV = calcUnitCylinderUV(intersectionPoint) * cappedCylinders[0].uvScale;
+		if (abs(normal) == vec3(0,1,0))
+		{
+			vec3 cappedCylinderScale = vec3(1.5, 3, 1.5);
+			intersectionUV.x = intersectionPoint.x * cappedCylinderScale.x;
+			intersectionUV.y = intersectionPoint.z * cappedCylinderScale.z;
+		}
+		intersectionShapeIsClosed = TRUE;
+	}
+
 	// transform ray into Unit Cone's object space
 	rObjOrigin = vec3( uConeInvMatrix * vec4(rayOrigin, 1.0) );
 	rObjDirection = vec3( uConeInvMatrix * vec4(rayDirection, 0.0) );
-	d = UnitConeIntersect(rObjOrigin, rObjDirection, normal);
+	d = UnitConeIntersect(0.0, rObjOrigin, rObjDirection, normal);
 	if (d > 0.0 && d < t)
 	{
 		t = d;
@@ -234,6 +272,26 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 		intersectionMaterial = cones[0].material;
 		intersectionUV = calcUnitCylinderUV(intersectionPoint) * cones[0].uvScale;
 		intersectionShapeIsClosed = FALSE;
+	}
+
+	// transform ray into Unit Capped Cone's object space
+	rObjOrigin = vec3( uCappedConeInvMatrix * vec4(rayOrigin, 1.0) );
+	rObjDirection = vec3( uCappedConeInvMatrix * vec4(rayDirection, 0.0) );
+	d = UnitCappedConeIntersect(0.5, rObjOrigin, rObjDirection, normal);
+	if (d > 0.0 && d < t)
+	{
+		t = d;
+		intersectionPoint = rObjOrigin + t * rObjDirection;
+		intersectionNormal = transpose(mat3(uCappedConeInvMatrix)) * normal;
+		intersectionMaterial = cappedCones[0].material;
+		intersectionUV = calcUnitCylinderUV(intersectionPoint) * cappedCones[0].uvScale;
+		if (abs(normal) == vec3(0,1,0))
+		{
+			vec3 cappedConeScale = vec3(2, 2, 2);
+			intersectionUV.x = intersectionPoint.x * cappedConeScale.x;
+			intersectionUV.y = intersectionPoint.z * cappedConeScale.z;
+		}
+		intersectionShapeIsClosed = TRUE;
 	}
 
 	// transform ray into Unit Paraboloid's object space
@@ -248,6 +306,26 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 		intersectionMaterial = paraboloids[0].material;
 		intersectionUV = calcUnitCylinderUV(intersectionPoint) * paraboloids[0].uvScale;
 		intersectionShapeIsClosed = FALSE;
+	}
+
+	// transform ray into Unit Capped Paraboloid's object space
+	rObjOrigin = vec3( uCappedParaboloidInvMatrix * vec4(rayOrigin, 1.0) );
+	rObjDirection = vec3( uCappedParaboloidInvMatrix * vec4(rayDirection, 0.0) );
+	d = UnitCappedParaboloidIntersect(rObjOrigin, rObjDirection, normal);
+	if (d > 0.0 && d < t)
+	{
+		t = d;
+		intersectionPoint = rObjOrigin + t * rObjDirection;
+		intersectionNormal = transpose(mat3(uCappedParaboloidInvMatrix)) * normal;
+		intersectionMaterial = cappedParaboloids[0].material;
+		intersectionUV = calcUnitCylinderUV(intersectionPoint) * cappedParaboloids[0].uvScale;
+		if (abs(normal) == vec3(0,1,0))
+		{
+			vec3 cappedParaboloidScale = vec3(2, 2, 2);
+			intersectionUV.x = intersectionPoint.x * cappedParaboloidScale.x;
+			intersectionUV.y = intersectionPoint.z * cappedParaboloidScale.z;
+		}
+		intersectionShapeIsClosed = TRUE;
 	}
 
 	// transform ray into Unit Hyperboloid's object space
@@ -687,8 +765,11 @@ void SetupScene(void)
 
 	cylinders[0] = UnitCylinder(vec2(2, 1), uvGridMaterial);
 	///cylinders[0].material.IoR = 1.3; // decrease the shininess just a bit
+	cappedCylinders[0] = UnitCappedCylinder(vec2(8, 5), whiteRedCheckerMaterial);
 	cones[0] = UnitCone(vec2(8, 5), whiteRedCheckerMaterial);
+	cappedCones[0] = UnitCappedCone(vec2(8, 5), whiteRedCheckerMaterial);
 	paraboloids[0] = UnitParaboloid(vec2(8, 5), whiteRedCheckerMaterial);
+	cappedParaboloids[0] = UnitCappedParaboloid(vec2(8, 5), whiteRedCheckerMaterial);
 	hyperboloids[0] = UnitHyperboloid(vec2(8, 6), whiteRedCheckerMaterial);
 	hyperbolicParaboloids[0] = UnitHyperbolicParaboloid(vec2(4, 4), whiteRedCheckerMaterial);
 	capsules[0] = UnitCapsule(vec2(8, 3), whiteRedCheckerMaterial);
