@@ -284,10 +284,10 @@ function initSceneData()
 	capsule.transform.scale.set(1.5, 1.5, 1.5);
 	capsule.transform.position.set(19, 1.5, -4);
 	capsule.transform.rotation.set(0, 0, Math.PI * 0.5);
+
 	// after specifying any desired transforms (scale, position, rotation), we must call updateMatrixWorld() to actually fill in the shape's matrix with these new values
 	capsule.transform.updateMatrixWorld(true); // 'true' forces a matrix update now, rather than waiting for Three.js' 'renderer.render()' call which happens last
-
-
+	
 
 
 	// In addition to the default GUI on all demos, add any special GUI elements that this particular demo requires
