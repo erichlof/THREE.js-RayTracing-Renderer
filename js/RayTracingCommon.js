@@ -247,6 +247,25 @@ vec2 calcUnitCylinderUV(vec3 pointOnUnitCylinder)
 	float v = -theta + 0.5; // -theta flips upside-down texture images
 	return vec2(u, v);
 }
+
+vec2 calcUnitBoxUV(vec3 pointOnUnitBox, vec3 normal, vec3 boxScale)
+{ // this is a simple tri-planar mapping: if the box normal points to the right or left, use z and x as uv coordinates.
+// If normal points up or down, use x and z as uv coordinates. If normal points forward and backward, use x and y as uv coordinates.
+	vec2 uv;
+
+	     if (normal.z > 0.0)
+		return (vec2( pointOnUnitBox.x, -pointOnUnitBox.y) * 0.5 + 0.5) * vec2(boxScale.x, boxScale.y);
+	else if (normal.z < 0.0) 
+		return (vec2(-pointOnUnitBox.x, -pointOnUnitBox.y) * 0.5 + 0.5) * vec2(boxScale.x, boxScale.y);
+	else if (normal.y > 0.0) 
+		return (vec2( pointOnUnitBox.x,  pointOnUnitBox.z) * 0.5 + 0.5) * vec2(boxScale.x, boxScale.z);
+	else if (normal.y < 0.0) 
+		return (vec2( pointOnUnitBox.x, -pointOnUnitBox.z) * 0.5 + 0.5) * vec2(boxScale.x, boxScale.z);
+	else if (normal.x > 0.0) 
+		return (vec2(-pointOnUnitBox.z, -pointOnUnitBox.y) * 0.5 + 0.5) * vec2(boxScale.z, boxScale.y);
+	else // (normal.x < 0.0)
+		return (vec2( pointOnUnitBox.z, -pointOnUnitBox.y) * 0.5 + 0.5) * vec2(boxScale.z, boxScale.y);
+}
 `;
 
 THREE.ShaderChunk[ 'raytracing_plane_intersect' ] = `
@@ -734,15 +753,15 @@ float UnitHyperbolicParaboloidIntersect( vec3 ro, vec3 rd, out vec3 n )
 
 THREE.ShaderChunk[ 'raytracing_unit_capsule_intersect' ] = `
 //------------------------------------------------------------------------------------------------------------
-float UnitCapsuleIntersect( float k, vec3 ro, vec3 rd, out vec3 normal )
+float UnitCapsuleIntersect( float heightRadius, vec3 ro, vec3 rd, out vec3 normal )
 //------------------------------------------------------------------------------------------------------------
 {
 	vec3 hitPoint;
 	float t0, t1;
 	float t = INFINITY;
 
-	// intersect unit-radius sphere located at top opening of cylinder -> or vec3(0,k,0)
-	vec3 L = ro - vec3(0, k, 0);
+	// intersect unit-radius sphere located at top opening of cylinder -> or vec3(0,heightRadius,0)
+	vec3 L = ro - vec3(0, heightRadius, 0);
 	float a = dot(rd, rd);
 	float b = 2.0 * dot(rd, L);
 	float c = dot(L, L) - 1.0;
@@ -751,25 +770,25 @@ float UnitCapsuleIntersect( float k, vec3 ro, vec3 rd, out vec3 normal )
 	if (t0 > 0.0 && t0 < t)
 	{
 		hitPoint = ro + rd * t0;
-		if (hitPoint.y >= k)
+		if (hitPoint.y >= heightRadius)
 		{
 			t = t0;
-			normal = vec3(hitPoint.x, hitPoint.y - k, hitPoint.z);
+			normal = vec3(hitPoint.x, hitPoint.y - heightRadius, hitPoint.z);
 		}	
 	}
 	// if t0 was invalid, try t1
 	if (t1 > 0.0 && t1 < t)
 	{
 		hitPoint = ro + rd * t1;
-		if (hitPoint.y >= k)
+		if (hitPoint.y >= heightRadius)
 		{
 			t = t1;
-			normal = vec3(hitPoint.x, hitPoint.y - k, hitPoint.z);
+			normal = vec3(hitPoint.x, hitPoint.y - heightRadius, hitPoint.z);
 		}	
 	}
 	
-	// now intersect unit-radius sphere located at bottom opening of cylinder -> or vec3(0,-k,0)
-	L = ro - vec3(0, -k, 0);
+	// now intersect unit-radius sphere located at bottom opening of cylinder -> or vec3(0,-heightRadius,0)
+	L = ro - vec3(0, -heightRadius, 0);
 	a = dot(rd, rd);
 	b = 2.0 * dot(rd, L);
 	c = dot(L, L) - 1.0;
@@ -778,20 +797,20 @@ float UnitCapsuleIntersect( float k, vec3 ro, vec3 rd, out vec3 normal )
 	if (t0 > 0.0 && t0 < t)
 	{
 		hitPoint = ro + rd * t0;
-		if (hitPoint.y <= -k)
+		if (hitPoint.y <= -heightRadius)
 		{
 			t = t0;
-			normal = vec3(hitPoint.x, hitPoint.y + k, hitPoint.z);
+			normal = vec3(hitPoint.x, hitPoint.y + heightRadius, hitPoint.z);
 		}	
 	}
 	// if t0 was invalid, try t1
 	if (t1 > 0.0 && t1 < t)
 	{
 		hitPoint = ro + rd * t1;
-		if (hitPoint.y <= -k)
+		if (hitPoint.y <= -heightRadius)
 		{
 			t = t1;
-			normal = vec3(hitPoint.x, hitPoint.y + k, hitPoint.z);
+			normal = vec3(hitPoint.x, hitPoint.y + heightRadius, hitPoint.z);
 		}	
 	}
 	
@@ -805,7 +824,7 @@ float UnitCapsuleIntersect( float k, vec3 ro, vec3 rd, out vec3 normal )
 	if (t0 > 0.0 && t0 < t)
 	{
 		hitPoint = ro + rd * t0;
-		if (abs(hitPoint.y) < k)
+		if (abs(hitPoint.y) < heightRadius)
 		{
 			t = t0;
 			normal = vec3(hitPoint.x, 0.0, hitPoint.z);
@@ -815,7 +834,7 @@ float UnitCapsuleIntersect( float k, vec3 ro, vec3 rd, out vec3 normal )
 	if (t1 > 0.0 && t1 < t)
 	{
 		hitPoint = ro + rd * t1;
-		if (abs(hitPoint.y) < k)
+		if (abs(hitPoint.y) < heightRadius)
 		{
 			t = t1;
 			normal = vec3(hitPoint.x, 0.0, hitPoint.z);
