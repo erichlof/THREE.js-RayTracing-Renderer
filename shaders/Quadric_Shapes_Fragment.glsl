@@ -411,11 +411,11 @@ vec3 getSkyColor(vec3 rayDir, vec3 directionToSunlight)
 vec3 RayTrace()
 //-------------------------------------------------------------------------------------------
 {
-	float pointLightPower = 4.0;
-        Material pointLightMaterial = Material( POINT_LIGHT, FALSE, vec3(1.0) * pointLightPower, vec3(1.0), 0.0, 0.0, -1 );
-	vec3 pointLightPosition = vec3(4, 10, 5);
+	// the following 2 variables are just placeholders in this directional light-only scene, so that the 'bounces' code loop below will still work 
+	vec3 pointLightPosition; // placeholder in this scene with no pointLights
+	Material pointLightMaterial; // placeholder in this scene with no pointLights
 	vec3 directionToSunlight = normalize(vec3(-1, 1, 0.5));
-	float sunlightPower = 6.0;
+	float sunlightPower = 4.0;
 	vec3 sunlightColor = vec3(1.0, 1.0, 1.0) * sunlightPower;
 	vec3 lightColor = sunlightColor;//pointLightMaterial.color;
 	vec3 accumulatedColor = vec3(0); // this will hold the final raytraced color for this pixel
@@ -499,7 +499,7 @@ vec3 RayTrace()
 		{	
 			if (bounces == 0) // if this is the initial camera ray, set it to the light's color and exit 
 			{
-				accumulatedColor = pointLightMaterial.color;
+				accumulatedColor = clamp(pointLightMaterial.color, 0.0, 4.0);
 				break;
 			}	
 				
@@ -510,7 +510,7 @@ vec3 RayTrace()
 			}
 			else
 			{
-				accumulatedColor += rayColorMask * pointLightMaterial.color;
+				accumulatedColor += rayColorMask * clamp(pointLightMaterial.color, 0.0, 4.0);
 			}
 			// if the shadow ray that reached the light source was from a ClearCoat Diffuse object, after adding its diffuse color and specular highlights (above),
 			// we need to rewind back to the surface and then follow the reflection ray path, in order to gather the mirror reflections on the shiny clearcoat.
@@ -532,8 +532,6 @@ vec3 RayTrace()
 		//  (another object was in the way of the light). This surface will be rendered in shadow (ambient contribution only)
 		if (isShadowRay == TRUE && intersectionMaterial.type != TRANSPARENT)
 		{
-			accumulatedColor += ambientContribution; // add ambient light only - this surface will be left in shadow (no direct diffuse or specular light)
-
 			// if the shadow ray failed, we can still rewind back to the surface of a shiny object (either ClearCoat or Transparent)
 			// and follow the saved reflectionRay path to gather the mirror reflections in the clearcoat
 			if (willNeedReflectionRay == TRUE)
@@ -580,11 +578,15 @@ vec3 RayTrace()
 			// Phong's original lighting model consists of 3 components - Ambient, Diffuse, and Specular contributions.
 			// Ambient is an old 'hack' to cheaply simulate the effect of soft, diffuse bounce lighting (Global Illumination)
 			ambientContribution = doAmbientLighting(rayColorMask, ambientIntensity, intersectionMaterial);
+			accumulatedColor += ambientContribution; // on diffuse surfaces (including Phong materials), ambient is always present no matter what, so go ahead and add it to the final accumColor now
+			
 			// Diffuse is the typical Lambertian lighting (NdotL) that arrives directly from the light source - this gives non-metallic surfaces their color & gradient shading
 			diffuseContribution = doDiffuseDirectLighting(rayColorMask, shadingNormal, directionToLight, lightColor, intersectionMaterial, diffuseFalloff);
-			diffuseContribution = mix(ambientContribution, diffuseContribution, diffuseFalloff);
+			diffuseContribution /= sceneUsesDirectionalLight == TRUE ? 1.0 : max(1.0, distance(pointLightPosition, intersectionPoint)); // inverse square law, but not so intense - falloff is more gradual/linear
+
 			// Specular is the bright highlight on shiny surfaces, resulting from a direct reflection of the light source itself
 			specularContribution = doBlinnPhongSpecularLighting(rayColorMask, rayDirection, shadingNormal, directionToLight, lightColor, intersectionMaterial);
+			
 			// when all 3 components (Ambient, Diffuse, and Specular) have been calculated, they are just simply added up to give the final lighting.
 			// Since Ambient lighting (global) is always present no matter what, it was immediately added a couple lines above.
 			// However, in order to add the Diffuse and Specular lighting contributions, we must be able to 'see' the light source from the surface's perspective.
@@ -626,9 +628,10 @@ vec3 RayTrace()
 			transmittance = 1.0 - reflectance; // and the fraction of light that is transmitted
 
 			ambientContribution = doAmbientLighting(rayColorMask, ambientIntensity, intersectionMaterial);
-
+			accumulatedColor += ambientContribution; // on diffuse surfaces (underneath the clearcoat), ambient is always present no matter what, so go ahead and add it to the final accumColor now
+			
 			diffuseContribution = doDiffuseDirectLighting(rayColorMask, shadingNormal, directionToLight, lightColor, intersectionMaterial, diffuseFalloff);
-			diffuseContribution = mix(ambientContribution, diffuseContribution, diffuseFalloff);
+			diffuseContribution /= sceneUsesDirectionalLight == TRUE ? 1.0 : max(1.0, distance(pointLightPosition, intersectionPoint)); // inverse square law, but not so intense - falloff is more gradual/linear
 			diffuseContribution *= max(0.1, transmittance); // the diffuse reflections from the surface are transmitted through the ClearCoat material, so we must weight them accordingly
 			
 			specularContribution = doBlinnPhongSpecularLighting(rayColorMask, rayDirection, shadingNormal, directionToLight, lightColor, intersectionMaterial);
