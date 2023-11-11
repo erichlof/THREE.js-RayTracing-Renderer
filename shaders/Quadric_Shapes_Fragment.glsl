@@ -582,7 +582,7 @@ vec3 RayTrace()
 			
 			// Diffuse is the typical Lambertian lighting (NdotL) that arrives directly from the light source - this gives non-metallic surfaces their color & gradient shading
 			diffuseContribution = doDiffuseDirectLighting(rayColorMask, shadingNormal, directionToLight, lightColor, intersectionMaterial, diffuseFalloff);
-			diffuseContribution /= sceneUsesDirectionalLight == TRUE ? 1.0 : max(1.0, distance(pointLightPosition, intersectionPoint)); // inverse square law, but not so intense - falloff is more gradual/linear
+			diffuseContribution /= sceneUsesDirectionalLight == TRUE ? 1.0 : max(1.0, 0.5 * dot(pointLightPosition - intersectionPoint, pointLightPosition - intersectionPoint));
 
 			// Specular is the bright highlight on shiny surfaces, resulting from a direct reflection of the light source itself
 			specularContribution = doBlinnPhongSpecularLighting(rayColorMask, rayDirection, shadingNormal, directionToLight, lightColor, intersectionMaterial);
@@ -631,7 +631,7 @@ vec3 RayTrace()
 			accumulatedColor += ambientContribution; // on diffuse surfaces (underneath the clearcoat), ambient is always present no matter what, so go ahead and add it to the final accumColor now
 			
 			diffuseContribution = doDiffuseDirectLighting(rayColorMask, shadingNormal, directionToLight, lightColor, intersectionMaterial, diffuseFalloff);
-			diffuseContribution /= sceneUsesDirectionalLight == TRUE ? 1.0 : max(1.0, distance(pointLightPosition, intersectionPoint)); // inverse square law, but not so intense - falloff is more gradual/linear
+			ddiffuseContribution /= sceneUsesDirectionalLight == TRUE ? 1.0 : max(1.0, 0.5 * dot(pointLightPosition - intersectionPoint, pointLightPosition - intersectionPoint));
 			diffuseContribution *= max(0.1, transmittance); // the diffuse reflections from the surface are transmitted through the ClearCoat material, so we must weight them accordingly
 			
 			specularContribution = doBlinnPhongSpecularLighting(rayColorMask, rayDirection, shadingNormal, directionToLight, lightColor, intersectionMaterial);
