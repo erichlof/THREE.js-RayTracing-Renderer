@@ -269,7 +269,7 @@ vec3 RayTrace()
 
 			// Diffuse is the typical Lambertian lighting (NdotL) that arrives directly from the light source - this gives non-metallic surfaces their color & gradient shading
 			diffuseContribution = doDiffuseDirectLighting(rayColorMask, shadingNormal, directionToLight, lightColor, intersectionMaterial, diffuseFalloff);
-			diffuseContribution /= sceneUsesDirectionalLight == TRUE ? 1.0 : max(1.0, 1.0 * distance(spheres[0].position, intersectionPoint));
+			diffuseContribution /= sceneUsesDirectionalLight == TRUE ? 1.0 : max(1.0, 0.5 *  dot(spheres[0].position - intersectionPoint, spheres[0].position - intersectionPoint));
 			
 			// Specular is the bright highlight on shiny surfaces, resulting from a direct reflection of the light source itself
 			specularContribution = doBlinnPhongSpecularLighting(rayColorMask, rayDirection, shadingNormal, directionToLight, lightColor, intersectionMaterial);
@@ -317,7 +317,7 @@ vec3 RayTrace()
 			accumulatedColor += ambientContribution; // on diffuse surfaces (underneath the clearcoat), ambient is always present no matter what, so go ahead and add it to the final accumColor now
 
 			diffuseContribution = doDiffuseDirectLighting(rayColorMask, shadingNormal, directionToLight, lightColor, intersectionMaterial, diffuseFalloff);
-			diffuseContribution /= sceneUsesDirectionalLight == TRUE ? 1.0 : max(1.0, 1.0 * distance(spheres[0].position, intersectionPoint));
+			diffuseContribution /= sceneUsesDirectionalLight == TRUE ? 1.0 : max(1.0, 0.5 * dot(spheres[0].position - intersectionPoint, spheres[0].position - intersectionPoint));
 			diffuseContribution *= max(0.1, transmittance); // the diffuse reflections from the surface are transmitted through the ClearCoat material, so we must weight them accordingly
 			
 			specularContribution = doBlinnPhongSpecularLighting(rayColorMask, rayDirection, shadingNormal, directionToLight, lightColor, intersectionMaterial);
@@ -432,7 +432,7 @@ void SetupScene(void)
 {
 	// rgb values for common metals
 	// Gold: (1.000, 0.766, 0.336) / Aluminum: (0.913, 0.921, 0.925) / Copper: (0.955, 0.637, 0.538) / Silver: (0.972, 0.960, 0.915)
-	float pointLightPower = 10.0;
+	float pointLightPower = 50.0;
 	Material pointLightMaterial = Material(POINT_LIGHT, FALSE, vec3(1.0, 1.0, 1.0) * pointLightPower, vec3(0.0, 0.0, 0.0), 0.0, 0.0, -1 );
 	Material blueMaterial = Material(CLEARCOAT, FALSE, vec3(0.01, 0.01, 1.0), vec3(0.0, 0.0, 0.0), uRoughness, 1.4, -1);
 	Material redMaterial = Material(PHONG, FALSE, vec3(1.0, 0.01, 0.01), vec3(0.0, 0.0, 0.0), uRoughness, 0.0, -1);
