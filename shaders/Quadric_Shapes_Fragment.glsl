@@ -449,8 +449,8 @@ vec3 RayTrace()
 	int previousIntersectionMaterialType;
 	intersectionMaterial.type = -100;
 
-	// For the kind of ray tracing we're doing, 6 or 7 bounces is enough to do all the reflections and refractions that are most noticeable.
-	// You might be able to get away with 5 bounces if on a mobile budget, or crank it up to 8/9 bounces if your scene has a bunch of mirrors or glass objects.
+	// For the kind of ray tracing we're doing, 7 or 8 bounces is enough to do all the reflections and refractions that are most noticeable.
+	// You might be able to get away with 5/6 bounces if on a mobile budget, or crank it up to 9/10 bounces if your scene has a bunch of mirrors or glass objects.
 
 	for (int bounces = 0; bounces < 8; bounces++)
 	{
@@ -510,7 +510,7 @@ vec3 RayTrace()
 			}
 			else
 			{
-				accumulatedColor += rayColorMask * clamp(pointLightMaterial.color, 0.0, 4.0);
+				accumulatedColor += rayColorMask * clamp(pointLightMaterial.color, 0.0, 2.0);
 			}
 			// if the shadow ray that reached the light source was from a ClearCoat Diffuse object, after adding its diffuse color and specular highlights (above),
 			// we need to rewind back to the surface and then follow the reflection ray path, in order to gather the mirror reflections on the shiny clearcoat.
@@ -582,7 +582,7 @@ vec3 RayTrace()
 			
 			// Diffuse is the typical Lambertian lighting (NdotL) that arrives directly from the light source - this gives non-metallic surfaces their color & gradient shading
 			diffuseContribution = doDiffuseDirectLighting(rayColorMask, shadingNormal, directionToLight, lightColor, intersectionMaterial, diffuseFalloff);
-			diffuseContribution /= sceneUsesDirectionalLight == TRUE ? 1.0 : max(1.0, 0.5 * dot(pointLightPosition - intersectionPoint, pointLightPosition - intersectionPoint));
+			diffuseContribution /= sceneUsesDirectionalLight == TRUE ? 1.0 : max(1.0, 0.5 * distance(pointLightPosition, intersectionPoint));
 
 			// Specular is the bright highlight on shiny surfaces, resulting from a direct reflection of the light source itself
 			specularContribution = doBlinnPhongSpecularLighting(rayColorMask, rayDirection, shadingNormal, directionToLight, lightColor, intersectionMaterial);
@@ -631,7 +631,7 @@ vec3 RayTrace()
 			accumulatedColor += ambientContribution; // on diffuse surfaces (underneath the clearcoat), ambient is always present no matter what, so go ahead and add it to the final accumColor now
 			
 			diffuseContribution = doDiffuseDirectLighting(rayColorMask, shadingNormal, directionToLight, lightColor, intersectionMaterial, diffuseFalloff);
-			diffuseContribution /= sceneUsesDirectionalLight == TRUE ? 1.0 : max(1.0, 0.5 * dot(pointLightPosition - intersectionPoint, pointLightPosition - intersectionPoint));
+			diffuseContribution /= sceneUsesDirectionalLight == TRUE ? 1.0 : max(1.0, 0.5 * distance(pointLightPosition, intersectionPoint));
 			diffuseContribution *= max(0.1, transmittance); // the diffuse reflections from the surface are transmitted through the ClearCoat material, so we must weight them accordingly
 			
 			specularContribution = doBlinnPhongSpecularLighting(rayColorMask, rayDirection, shadingNormal, directionToLight, lightColor, intersectionMaterial);
