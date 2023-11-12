@@ -173,7 +173,7 @@ vec3 doBlinnPhongSpecularLighting(vec3 rayColorMask, vec3 rayDirection, vec3 sur
 	// for metal materials (conductors) however, specular color gets tinted by the metal surface color
 	// therefore, in the metal case, 'rayColorMask' will get pre-tinted before it is passed into this function
 	vec3 specularLighting = rayColorMask; // will either be white for dielectrics (usually vec3(1,1,1)), or tinted by metal color for metallics
-	specularLighting *= lightColor;
+	specularLighting *= clamp(lightColor, 0.0, 4.0);
 	vec3 halfwayVector = normalize(-rayDirection + directionToLight); // this is Blinn's modification to Phong's model
 	float shininessExponent = 8.0 / max(0.001, surfaceMaterial.roughness * surfaceMaterial.roughness); // roughness squared produces smoother transition
 	float specularFalloff = pow(max(0.0, dot(surfaceNormal, halfwayVector)), shininessExponent); // this is a powered cosine with shininess as the exponent
