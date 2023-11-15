@@ -89,7 +89,7 @@ float SceneIntersect( int isShadowRay )
 	{
 		t = d;
 		intersectionPoint = rayOrigin + t * rayDirection;
-		intersectionNormal = (rayOrigin + t * rayDirection) - spheres[0].position;
+		intersectionNormal = intersectionPoint - spheres[0].position;
 		intersectionMaterial = spheres[0].material;
 		intersectionUV = calcSphereUV(intersectionPoint, spheres[0].radius, spheres[0].position) * spheres[0].uvScale;
 		intersectionShapeIsClosed = TRUE;
@@ -100,7 +100,7 @@ float SceneIntersect( int isShadowRay )
 	{
 		t = d;
 		intersectionPoint = rayOrigin + t * rayDirection;
-		intersectionNormal = (rayOrigin + t * rayDirection) - spheres[1].position;
+		intersectionNormal = intersectionPoint - spheres[1].position;
 		intersectionMaterial = spheres[1].material;
 		intersectionUV = calcSphereUV(intersectionPoint, spheres[1].radius, spheres[1].position) * spheres[1].uvScale;
 		intersectionShapeIsClosed = TRUE;
@@ -111,7 +111,7 @@ float SceneIntersect( int isShadowRay )
 	{
 		t = d;
 		intersectionPoint = rayOrigin + t * rayDirection;
-		intersectionNormal = (rayOrigin + t * rayDirection) - spheres[2].position;
+		intersectionNormal = intersectionPoint - spheres[2].position;
 		intersectionMaterial = spheres[2].material;
 		intersectionUV = calcSphereUV(intersectionPoint, spheres[2].radius, spheres[2].position) * spheres[2].uvScale;
 		intersectionShapeIsClosed = TRUE;
@@ -122,7 +122,7 @@ float SceneIntersect( int isShadowRay )
 	{
 		t = d;
 		intersectionPoint = rayOrigin + t * rayDirection;
-		intersectionNormal = (rayOrigin + t * rayDirection) - spheres[3].position;
+		intersectionNormal = intersectionPoint - spheres[3].position;
 		intersectionMaterial = spheres[3].material;
 		intersectionUV = calcSphereUV(intersectionPoint, spheres[3].radius, spheres[3].position) * spheres[3].uvScale;
 		intersectionShapeIsClosed = TRUE;
@@ -133,7 +133,7 @@ float SceneIntersect( int isShadowRay )
 	{
 		t = d;
 		intersectionPoint = rayOrigin + t * rayDirection;
-		intersectionNormal = (rayOrigin + t * rayDirection) - spheres[4].position;
+		intersectionNormal = intersectionPoint - spheres[4].position;
 		intersectionMaterial = spheres[4].material;
 		intersectionUV = calcSphereUV(intersectionPoint, spheres[4].radius, spheres[4].position) * spheres[4].uvScale;
 		intersectionShapeIsClosed = TRUE;
