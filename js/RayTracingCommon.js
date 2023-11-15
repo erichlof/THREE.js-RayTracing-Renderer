@@ -1054,6 +1054,124 @@ float UnitBoxIntersect( vec3 ro, vec3 rd )
 }
 `;
 
+THREE.ShaderChunk[ 'raytracing_unit_triangular_wedge_intersect' ] = `
+
+//------------------------------------------------------------------------------------------------------------
+float UnitTriangularWedgeIntersect( vec3 ro, vec3 rd, out vec3 n )
+//------------------------------------------------------------------------------------------------------------
+{
+	vec3 n0, n1;
+	float t;
+	float t0 = -INFINITY;
+	float t1 = INFINITY;
+	float plane_dot_rayDir;
+
+	// a triangular wedge(prism) looks like:
+	//    __
+	//   |\ \
+	//   | \ \
+	//   |  \ \
+	//   |   \ \
+	//   -------
+
+	// left square side of wedge
+	plane_dot_rayDir = dot(vec3(-1,0,0), rd);
+	t = (-dot(vec3(-1,0,0), ro) + 1.0) / plane_dot_rayDir;
+	if (plane_dot_rayDir < 0.0 && t > t0)
+	{
+		t0 = t;
+		n0 = vec3(-1,0,0);
+	}	
+	if (plane_dot_rayDir > 0.0 && t < t1)
+	{
+		t1 = t;
+		n1 = vec3(-1,0,0);
+	}
+
+	// front triangular face of wedge
+	plane_dot_rayDir = dot(vec3(0,0,1), rd);
+	t = (-dot(vec3(0,0,1), ro) + 1.0) / plane_dot_rayDir;
+	if (plane_dot_rayDir < 0.0 && t > t0)
+	{
+		t0 = t;
+		n0 = vec3(0,0,1);
+	}	
+	if (plane_dot_rayDir > 0.0 && t < t1)
+	{
+		t1 = t;
+		n1 = vec3(0,0,1);
+	}
+
+	// back triangular face of wedge
+	plane_dot_rayDir = dot(vec3(0,0,-1), rd);
+	t = (-dot(vec3(0,0,-1), ro) + 1.0) / plane_dot_rayDir;
+	if (plane_dot_rayDir < 0.0 && t > t0)
+	{
+		t0 = t;
+		n0 = vec3(0,0,-1);
+	}	
+	if (plane_dot_rayDir > 0.0 && t < t1)
+	{
+		t1 = t;
+		n1 = vec3(0,0,-1);
+	}
+
+	// bottom square base of wedge
+	plane_dot_rayDir = dot(vec3(0,-1,0), rd);
+	t = (-dot(vec3(0,-1,0), ro) + 1.0) / plane_dot_rayDir;
+	if (plane_dot_rayDir < 0.0 && t > t0)
+	{
+		t0 = t;
+		n0 = vec3(0,-1,0);
+	}	
+	if (plane_dot_rayDir > 0.0 && t < t1)
+	{
+		t1 = t;
+		n1 = vec3(0,-1,0);
+	}
+
+	// angled square right side of wedge
+	vec3 angledFaceNormal = vec3(0.7071067811865475, 0.7071067811865475, 0);
+	plane_dot_rayDir = dot(angledFaceNormal, rd);
+	t = (-dot(angledFaceNormal, ro) + 0.0) / plane_dot_rayDir;
+	if (plane_dot_rayDir < 0.0 && t > t0)
+	{
+		t0 = t;
+		n0 = angledFaceNormal;
+	}	
+	if (plane_dot_rayDir > 0.0 && t < t1)
+	{
+		t1 = t;
+		n1 = angledFaceNormal;
+	}
+
+	if (t0 > t1) // check for invalid t0/t1 intersection pair
+		return INFINITY;
+	if (t0 > 0.0)
+	{
+		n = n0;
+		return t0;
+	}
+	if (t1 > 0.0)
+	{
+		n = n1;
+		return t1;
+	}
+
+	return INFINITY;
+}
+
+/*
+//----------------------------------------------------------------------------------------------------------------------------------
+void TriangularWedge_CSG_Intersect( vec3 ro, vec3 rd, int numPlanes, vec4 planes[20], out float t0, out float t1, out vec3 n0, out vec3 n1 )
+//----------------------------------------------------------------------------------------------------------------------------------
+{
+	
+}
+*/
+
+`; 
+
 THREE.ShaderChunk[ 'raytracing_quadric_intersect' ] = `
 
 /*
@@ -1925,9 +2043,7 @@ float ConvexPolyhedronIntersect( vec3 ro, vec3 rd, out vec3 n, int numPlanes, ve
 	for (int i = 0; i < numPlanes; i++)
 	{
 		plane_dot_rayDir = dot(planes[i].xyz, rd);
-		if (plane_dot_rayDir == 0.0)
-			continue;
-
+		
 		t = (-dot(planes[i].xyz, ro) + planes[i].w) / plane_dot_rayDir;
 
 		if (plane_dot_rayDir < 0.0 && t > t0)
