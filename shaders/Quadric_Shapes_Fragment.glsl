@@ -8,6 +8,7 @@ uniform sampler2D uUVGridTexture;
 uniform mat4 uRectangleInvMatrix;
 uniform mat4 uDiskInvMatrix;
 uniform mat4 uBoxInvMatrix;
+uniform mat4 uWedgeInvMatrix;
 uniform mat4 uDiffuseSphereInvMatrix;
 uniform mat4 uMetalSphereInvMatrix;
 uniform mat4 uCoatSphereInvMatrix;
@@ -26,6 +27,7 @@ uniform mat4 uCapsuleInvMatrix;
 #define N_RECTANGLES 1
 #define N_DISKS 1
 #define N_BOXES 1
+#define N_WEDGES 1
 #define N_SPHERES 4
 #define N_CYLINDERS 1
 #define N_CAPPED_CYLINDERS 1
@@ -43,6 +45,7 @@ struct Material { int type; int isCheckered; vec3 color; vec3 color2; float roug
 struct UnitRectangle { vec2 uvScale; Material material; };
 struct UnitDisk { vec2 uvScale; Material material; };
 struct UnitBox { vec2 uvScale; Material material; };
+struct UnitWedge { vec2 uvScale; Material material; };
 struct UnitSphere { vec2 uvScale; Material material; };
 struct UnitCylinder { vec2 uvScale; Material material; };
 struct UnitCappedCylinder { vec2 uvScale; Material material; };
@@ -64,6 +67,7 @@ Material intersectionMaterial;
 UnitRectangle rectangles[N_RECTANGLES];
 UnitDisk disks[N_DISKS];
 UnitBox boxes[N_BOXES];
+UnitWedge wedges[N_WEDGES];
 UnitSphere spheres[N_SPHERES];
 UnitCylinder cylinders[N_CYLINDERS];
 UnitCappedCylinder cappedCylinders[N_CAPPED_CYLINDERS];
@@ -89,6 +93,8 @@ UnitCapsule capsules[N_CAPSULES];
 #include <raytracing_unit_disk_intersect>
 
 #include <raytracing_unit_box_intersect>
+
+#include <raytracing_unit_triangular_wedge_intersect>
 
 #include <raytracing_unit_sphere_intersect>
 
@@ -390,6 +396,34 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 		intersectionNormal = transpose(mat3(uBoxInvMatrix)) * normal;
 		intersectionMaterial = boxes[0].material;
 		intersectionUV = calcUnitBoxUV(intersectionPoint, normal, boxScale) * boxes[0].uvScale;
+		intersectionShapeIsClosed = TRUE;
+	}
+
+
+	// transform ray into Unit Triangular Wedge's object space
+	rObjOrigin = vec3( uWedgeInvMatrix * vec4(rayOrigin, 1.0) );
+	rObjDirection = vec3( uWedgeInvMatrix * vec4(rayDirection, 0.0) );
+	d = UnitTriangularWedgeIntersect( rObjOrigin, rObjDirection, normal );
+	if (d < t)
+	{
+		t = d;
+		intersectionPoint = rObjOrigin + t * rObjDirection; // intersection in box's object space, vec3(-1,-1,-1) to vec3(+1,+1,+1)
+		vec3 wedgeScale = vec3(4,4,4);	
+		intersectionNormal = transpose(mat3(uWedgeInvMatrix)) * normal;
+		intersectionMaterial = wedges[0].material;
+
+		     if (normal.x > 0.0) 
+			intersectionUV = (vec2(-intersectionPoint.z, -intersectionPoint.y * 1.5) * 0.5 + 0.5) * vec2(wedgeScale.z, wedgeScale.y);
+		else if (normal.z > 0.0)
+			intersectionUV = (vec2( intersectionPoint.x, -intersectionPoint.y) * 0.5 + 0.5) * vec2(wedgeScale.x, wedgeScale.y);
+		else if (normal.z < 0.0) 
+			intersectionUV = (vec2(-intersectionPoint.x, -intersectionPoint.y) * 0.5 + 0.5) * vec2(wedgeScale.x, wedgeScale.y);
+		else if (normal.y < 0.0) 
+			intersectionUV = (vec2( intersectionPoint.x, -intersectionPoint.z) * 0.5 + 0.5) * vec2(wedgeScale.x, wedgeScale.z);
+		else // (normal.x < 0.0)
+			intersectionUV = (vec2( intersectionPoint.z, -intersectionPoint.y) * 0.5 + 0.5) * vec2(wedgeScale.z, wedgeScale.y);
+
+		intersectionUV *= wedges[0].uvScale;
 		intersectionShapeIsClosed = TRUE;
 	}
 
@@ -759,7 +793,8 @@ void SetupScene(void)
 	
 	rectangles[0] = UnitRectangle(vec2(300, 300), grayBlackCheckerMaterial);
 	disks[0] = UnitDisk(vec2(1, 1), uvGridMaterial);
-	boxes[0] = UnitBox(vec2(1, 1), whiteRedCheckerMaterial); // (2,2)
+	boxes[0] = UnitBox(vec2(1, 1), whiteRedCheckerMaterial);
+	wedges[0] = UnitWedge(vec2(1, 1), whiteRedCheckerMaterial);
 
 	spheres[0] = UnitSphere(vec2(2, 1), redMaterial);
 	spheres[1] = UnitSphere(vec2(2, 1), metalMaterial);
