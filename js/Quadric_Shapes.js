@@ -3,7 +3,7 @@ let UVGridTexture;
 let imageTexturesTotalCount = 1;
 let numOfImageTexturesLoaded = 0;
 let shearMatrix = new THREE.Matrix4();
-let groundRectangle, disk, box;
+let groundRectangle, disk, box, wedge;
 let diffuseSphere, metalSphere, coatSphere, glassSphere;
 let cylinder, cone, paraboloid, hyperboloid, hyperbolicParaboloid, capsule;
 let cappedCylinder, cappedCone, cappedParaboloid;
@@ -94,6 +94,25 @@ function initSceneData()
 	box.transform.rotation.set(0, -0.8, 0);
 	// after specifying any desired transforms (scale, position, rotation), we must call updateMatrixWorld() to actually fill in the shape's matrix with these new values
 	box.transform.updateMatrixWorld(true); // 'true' forces a matrix update now, rather than waiting for Three.js' 'renderer.render()' call which happens last
+
+
+	// ClearCoat checkered triangular wedge
+	wedge = new RayTracingShape("triangular wedge");
+
+	wedge.material.color.set(1.0, 1.0, 1.0); // (r,g,b) range: 0.0 to 1.0 / default is rgb(1,1,1) white
+	wedge.material.opacity = 1.0; // range: 0.0 to 1.0 / default is 1.0 (fully opaque)
+	wedge.material.ior = 1.4; // range: 1.0(air) to 2.33(diamond) / default is 1.5(glass) / other useful ior is 1.33(water)
+	wedge.material.clearcoat = 1.0; // range: 0.0 to 1.0 / default is 0.0 (no clearcoat)
+	wedge.material.metalness = 0.0; // range: either 0.0 or 1.0 / default is 0.0 (not metal)
+	wedge.material.roughness = 0.0; // range: 0.0 to 1.0 / default is 0.0 (no roughness, perfectly smooth)
+
+	wedge.uvScale.set(1, 1); // if checkered or using a texture, how many times should the uv's repeat in the X axis / Y axis?
+
+	wedge.transform.scale.set(2, 2, 2);
+	wedge.transform.position.set(14, 2.01, -19);
+	wedge.transform.rotation.set(0, 0.2, 0);
+	// after specifying any desired transforms (scale, position, rotation), we must call updateMatrixWorld() to actually fill in the shape's matrix with these new values
+	wedge.transform.updateMatrixWorld(true); // 'true' forces a matrix update now, rather than waiting for Three.js' 'renderer.render()' call which happens last
 
 
 	// diffuse sphere
@@ -355,6 +374,7 @@ function initSceneData()
 	rayTracingUniforms.uRectangleInvMatrix = { value: new THREE.Matrix4() };
 	rayTracingUniforms.uDiskInvMatrix = { value: new THREE.Matrix4() };
 	rayTracingUniforms.uBoxInvMatrix = { value: new THREE.Matrix4() };
+	rayTracingUniforms.uWedgeInvMatrix = { value: new THREE.Matrix4() };
 	rayTracingUniforms.uDiffuseSphereInvMatrix = { value: new THREE.Matrix4() };
 	rayTracingUniforms.uMetalSphereInvMatrix = { value: new THREE.Matrix4() };
 	rayTracingUniforms.uCoatSphereInvMatrix = { value: new THREE.Matrix4() };
@@ -374,6 +394,7 @@ function initSceneData()
 	rayTracingUniforms.uRectangleInvMatrix.value.copy(groundRectangle.transform.matrixWorld).invert();
 	rayTracingUniforms.uDiskInvMatrix.value.copy(disk.transform.matrixWorld).invert();
 	rayTracingUniforms.uBoxInvMatrix.value.copy(box.transform.matrixWorld).invert();
+	rayTracingUniforms.uWedgeInvMatrix.value.copy(wedge.transform.matrixWorld).invert();
 	rayTracingUniforms.uDiffuseSphereInvMatrix.value.copy(diffuseSphere.transform.matrixWorld).invert();
 	rayTracingUniforms.uMetalSphereInvMatrix.value.copy(metalSphere.transform.matrixWorld).invert();
 	rayTracingUniforms.uCoatSphereInvMatrix.value.copy(coatSphere.transform.matrixWorld).invert();
