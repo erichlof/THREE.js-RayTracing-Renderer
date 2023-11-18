@@ -37,7 +37,7 @@ function initSceneData()
 	// look up or down
 	cameraControlsPitchObject.rotation.x = 0.005;
 
-	cameraFlightSpeed = 30;
+	cameraFlightSpeed = 15;
 
 	// ClearCoat checkered ground rectangle
 	groundRectangle = new RayTracingShape("rectangle");
