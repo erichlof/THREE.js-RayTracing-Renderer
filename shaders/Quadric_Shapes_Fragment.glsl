@@ -80,13 +80,7 @@ UnitHyperbolicParaboloid hyperbolicParaboloids[N_HYPERBOLIC_PARABOLOIDS];
 UnitCapsule capsules[N_CAPSULES];
 
 
-#include <raytracing_random_functions>
-
-#include <raytracing_lighting_models>
-
-#include <raytracing_calc_fresnel_reflectance>
-
-#include <raytracing_solve_quadratic>
+#include <raytracing_core_functions>
 
 #include <raytracing_unit_rectangle_intersect>
 
@@ -116,7 +110,6 @@ UnitCapsule capsules[N_CAPSULES];
 
 #include <raytracing_unit_capsule_intersect>
 
-#include <raytracing_calc_UV_coordinates>
 
 
 //---------------------------------------------------------------------------------------
