@@ -29,21 +29,14 @@ Box boxes[N_BOXES];
 Sphere spheres[N_SPHERES];
 
 
-#include <raytracing_random_functions>
-
-#include <raytracing_lighting_models>
-
-#include <raytracing_calc_fresnel_reflectance>
+#include <raytracing_core_functions>
 
 #include <raytracing_rectangle_intersect>
 
 #include <raytracing_box_intersect>
 
-#include <raytracing_solve_quadratic>
-
 #include <raytracing_sphere_intersect>
 
-#include <raytracing_calc_UV_coordinates>
 
 //---------------------------------------------------------------------------------------
 float SceneIntersect( int isShadowRay )
