@@ -41,7 +41,7 @@ in vec2 vUv;
 `;
 
 
-THREE.ShaderChunk[ 'raytracing_random_functions' ] = `
+THREE.ShaderChunk[ 'raytracing_core_functions' ] = `
 // globals used in rand() function
 vec4 randVec4; // samples and holds the RGBA blueNoise texture value for this pixel
 float randNumber; // the final randomly generated number (range: 0.0 to 1.0)
@@ -67,15 +67,140 @@ float rng()
     	uint  n = 1103515245U * ( (q.x) ^ (q.y >> 3U) );
 	return float(n) * (1.0 / float(0xffffffffU));
 }
-`;
 
-
-THREE.ShaderChunk[ 'raytracing_main' ] = `
 // tentFilter from Peter Shirley's 'Realistic Ray Tracing (2nd Edition)' book, pg. 60
 float tentFilter(float x) // input: x: a random float(0.0 to 1.0), output: a filtered float (-1.0 to +1.0)
 {
 	return (x < 0.5) ? sqrt(2.0 * x) - 1.0 : 1.0 - sqrt(2.0 - (2.0 * x));
 }
+
+vec3 doAmbientLighting(vec3 rayColorMask, float ambientIntensity, Material surfaceMaterial)
+{
+	vec3 ambientLighting = rayColorMask * surfaceMaterial.color;
+	ambientLighting *= ambientIntensity;
+	return ambientLighting;
+}
+
+vec3 doDiffuseDirectLighting(vec3 rayColorMask, vec3 surfaceNormal, vec3 directionToLight, vec3 lightColor, Material surfaceMaterial, out float diffuseFalloff)
+{
+	vec3 diffuseLighting = rayColorMask * surfaceMaterial.color;
+	diffuseLighting *= lightColor;
+	// next, do typical Lambertian diffuse lighting (NdotL)
+	diffuseFalloff = max(0.0, dot(surfaceNormal, directionToLight));
+	diffuseLighting *= diffuseFalloff;
+	return diffuseLighting;
+}
+
+vec3 doBlinnPhongSpecularLighting(vec3 rayColorMask, vec3 rayDirection, vec3 surfaceNormal, vec3 directionToLight, vec3 lightColor, Material surfaceMaterial)
+{
+	// for dielectric materials (non-conductors), specular color is unaffected by surface color
+	// for metal materials (conductors) however, specular color gets tinted by the metal surface color
+	// therefore, in the metal case, 'rayColorMask' will get pre-tinted before it is passed into this function
+	vec3 specularLighting = rayColorMask; // will either be white for dielectrics (usually vec3(1,1,1)), or tinted by metal color for metallics
+	specularLighting *= clamp(lightColor, 0.0, 4.0);
+	vec3 halfwayVector = normalize(-rayDirection + directionToLight); // this is Blinn's modification to Phong's model
+	float shininessExponent = 8.0 / max(0.001, surfaceMaterial.roughness * surfaceMaterial.roughness); // roughness squared produces smoother transition
+	float specularFalloff = pow(max(0.0, dot(surfaceNormal, halfwayVector)), shininessExponent); // this is a powered cosine with shininess as the exponent
+	specularLighting *= specularFalloff;
+	specularLighting *= (1.0 - surfaceMaterial.roughness); // makes specular highlights fade away as surface roughness increases
+	return mix(vec3(0), specularLighting, max(0.0, dot(surfaceNormal, directionToLight)));
+}
+
+float calcFresnelReflectance(vec3 rayDirection, vec3 n, float etai, float etat, out float IoR_ratio)
+{
+	float temp = etai;
+	float cosi = clamp(dot(rayDirection, n), -1.0, 1.0);
+	if (cosi > 0.0)
+	{
+		etai = etat;
+		etat = temp;
+	}
+	
+	IoR_ratio = etai / etat;
+	float sint2 = IoR_ratio * IoR_ratio * (1.0 - (cosi * cosi));
+	if (sint2 >= 1.0) 
+		return 1.0; // total internal reflection
+	float cost = sqrt(1.0 - sint2);
+	cosi = abs(cosi);
+	float Rs = ((etat * cosi) - (etai * cost)) / ((etat * cosi) + (etai * cost));
+	float Rp = ((etai * cosi) - (etat * cost)) / ((etai * cosi) + (etat * cost));
+	return clamp( ((Rs * Rs) + (Rp * Rp)) * 0.5, 0.0, 1.0 );
+}
+
+vec2 calcSphereUV(vec3 pointOnSphere, float sphereRadius, vec3 spherePosition)
+{
+	vec3 normalizedPoint = pointOnSphere - spherePosition;
+	normalizedPoint *= (1.0 / sphereRadius);
+	float phi = atan(-normalizedPoint.z, normalizedPoint.x);
+	float theta = acos(normalizedPoint.y);
+	float u = phi * ONE_OVER_TWO_PI + 0.5;
+	float v = theta * ONE_OVER_PI;
+	return vec2(u, v);
+}
+
+vec2 calcUnitSphereUV(vec3 pointOnUnitSphere)
+{
+	float phi = atan(-pointOnUnitSphere.z, pointOnUnitSphere.x);
+	float theta = acos(pointOnUnitSphere.y);
+	float u = phi * ONE_OVER_TWO_PI + 0.5;
+	float v = theta * ONE_OVER_PI;
+	return vec2(u, v);
+}
+
+vec2 calcCylinderUV(vec3 pointOnCylinder, float cylinderHeightRadius, vec3 cylinderPosition)
+{
+	vec3 normalizedPoint = pointOnCylinder - cylinderPosition;
+	// must compute theta before normalizing the intersection point
+	float theta = normalizedPoint.y / (cylinderHeightRadius * 2.0);
+	normalizedPoint = normalize(normalizedPoint);
+	float phi = atan(-normalizedPoint.z, normalizedPoint.x);
+	float u = phi * ONE_OVER_TWO_PI + 0.5;
+	float v = -theta + 0.5; // -theta flips upside-down texture images
+	return vec2(u, v);
+}
+
+vec2 calcUnitCylinderUV(vec3 pointOnUnitCylinder)
+{
+	float phi = atan(-pointOnUnitCylinder.z, pointOnUnitCylinder.x);
+	float theta = pointOnUnitCylinder.y * 0.5;
+	float u = phi * ONE_OVER_TWO_PI + 0.5;
+	float v = -theta + 0.5; // -theta flips upside-down texture images
+	return vec2(u, v);
+}
+
+vec2 calcUnitBoxUV(vec3 pointOnUnitBox, vec3 normal, vec3 boxScale)
+{ // this is a simple tri-planar mapping: if the box normal points to the right or left, use z and x as uv coordinates.
+// If normal points up or down, use x and z as uv coordinates. If normal points forward and backward, use x and y as uv coordinates.
+	     if (normal.z > 0.0)
+		return (vec2( pointOnUnitBox.x, -pointOnUnitBox.y) * 0.5 + 0.5) * vec2(boxScale.x, boxScale.y);
+	else if (normal.z < 0.0) 
+		return (vec2(-pointOnUnitBox.x, -pointOnUnitBox.y) * 0.5 + 0.5) * vec2(boxScale.x, boxScale.y);
+	else if (normal.y > 0.0) 
+		return (vec2( pointOnUnitBox.x,  pointOnUnitBox.z) * 0.5 + 0.5) * vec2(boxScale.x, boxScale.z);
+	else if (normal.y < 0.0) 
+		return (vec2( pointOnUnitBox.x, -pointOnUnitBox.z) * 0.5 + 0.5) * vec2(boxScale.x, boxScale.z);
+	else if (normal.x > 0.0) 
+		return (vec2(-pointOnUnitBox.z, -pointOnUnitBox.y) * 0.5 + 0.5) * vec2(boxScale.z, boxScale.y);
+	else // (normal.x < 0.0)
+		return (vec2( pointOnUnitBox.z, -pointOnUnitBox.y) * 0.5 + 0.5) * vec2(boxScale.z, boxScale.y);
+}
+
+// optimized algorithm for solving quadratic equations developed by Dr. Po-Shen Loh -> https://youtu.be/XKBX0r3J-9Y
+// Adapted to root finding (ray t0/t1) for all quadric shapes (sphere, ellipsoid, cylinder, cone, etc.) by Erich Loftis
+void solveQuadratic(float A, float B, float C, out float t0, out float t1)
+{
+	float invA = 1.0 / A;
+	B *= invA;
+	C *= invA;
+	float neg_halfB = -B * 0.5;
+	float u2 = neg_halfB * neg_halfB - C;
+	float u = u2 < 0.0 ? neg_halfB = 0.0 : sqrt(u2);
+	t0 = neg_halfB - u;
+	t1 = neg_halfB + u;
+}
+`;
+
+THREE.ShaderChunk[ 'raytracing_main' ] = `
 
 void main( void )
 {
@@ -145,124 +270,6 @@ void main( void )
 	}
 
 	pc_fragColor = vec4(previousPixel.rgb + currentPixel.rgb, currentPixel.a);
-}
-`;
-
-
-THREE.ShaderChunk[ 'raytracing_lighting_models' ] = `
-vec3 doAmbientLighting(vec3 rayColorMask, float ambientIntensity, Material surfaceMaterial)
-{
-	vec3 ambientLighting = rayColorMask * surfaceMaterial.color;
-	ambientLighting *= ambientIntensity;
-	return ambientLighting;
-}
-
-vec3 doDiffuseDirectLighting(vec3 rayColorMask, vec3 surfaceNormal, vec3 directionToLight, vec3 lightColor, Material surfaceMaterial, out float diffuseFalloff)
-{
-	vec3 diffuseLighting = rayColorMask * surfaceMaterial.color;
-	diffuseLighting *= lightColor;
-	// next, do typical Lambertian diffuse lighting (NdotL)
-	diffuseFalloff = max(0.0, dot(surfaceNormal, directionToLight));
-	diffuseLighting *= diffuseFalloff;
-	return diffuseLighting;
-}
-
-vec3 doBlinnPhongSpecularLighting(vec3 rayColorMask, vec3 rayDirection, vec3 surfaceNormal, vec3 directionToLight, vec3 lightColor, Material surfaceMaterial)
-{
-	// for dielectric materials (non-conductors), specular color is unaffected by surface color
-	// for metal materials (conductors) however, specular color gets tinted by the metal surface color
-	// therefore, in the metal case, 'rayColorMask' will get pre-tinted before it is passed into this function
-	vec3 specularLighting = rayColorMask; // will either be white for dielectrics (usually vec3(1,1,1)), or tinted by metal color for metallics
-	specularLighting *= clamp(lightColor, 0.0, 4.0);
-	vec3 halfwayVector = normalize(-rayDirection + directionToLight); // this is Blinn's modification to Phong's model
-	float shininessExponent = 8.0 / max(0.001, surfaceMaterial.roughness * surfaceMaterial.roughness); // roughness squared produces smoother transition
-	float specularFalloff = pow(max(0.0, dot(surfaceNormal, halfwayVector)), shininessExponent); // this is a powered cosine with shininess as the exponent
-	specularLighting *= specularFalloff;
-	specularLighting *= (1.0 - surfaceMaterial.roughness); // makes specular highlights fade away as surface roughness increases
-	return mix(vec3(0), specularLighting, max(0.0, dot(surfaceNormal, directionToLight)));
-}
-`;
-
-THREE.ShaderChunk[ 'raytracing_calc_fresnel_reflectance' ] = `
-float calcFresnelReflectance(vec3 rayDirection, vec3 n, float etai, float etat, out float IoR_ratio)
-{
-	float temp = etai;
-	float cosi = clamp(dot(rayDirection, n), -1.0, 1.0);
-	if (cosi > 0.0)
-	{
-		etai = etat;
-		etat = temp;
-	}
-	
-	IoR_ratio = etai / etat;
-	float sint2 = IoR_ratio * IoR_ratio * (1.0 - (cosi * cosi));
-	if (sint2 >= 1.0) 
-		return 1.0; // total internal reflection
-	float cost = sqrt(1.0 - sint2);
-	cosi = abs(cosi);
-	float Rs = ((etat * cosi) - (etai * cost)) / ((etat * cosi) + (etai * cost));
-	float Rp = ((etai * cosi) - (etat * cost)) / ((etai * cosi) + (etat * cost));
-	return clamp( ((Rs * Rs) + (Rp * Rp)) * 0.5, 0.0, 1.0 );
-}
-`;
-
-THREE.ShaderChunk[ 'raytracing_calc_UV_coordinates' ] = `
-vec2 calcSphereUV(vec3 pointOnSphere, float sphereRadius, vec3 spherePosition)
-{
-	vec3 normalizedPoint = pointOnSphere - spherePosition;
-	normalizedPoint *= (1.0 / sphereRadius);
-	float phi = atan(-normalizedPoint.z, normalizedPoint.x);
-	float theta = acos(normalizedPoint.y);
-	float u = phi * ONE_OVER_TWO_PI + 0.5;
-	float v = theta * ONE_OVER_PI;
-	return vec2(u, v);
-}
-
-vec2 calcUnitSphereUV(vec3 pointOnUnitSphere)
-{
-	float phi = atan(-pointOnUnitSphere.z, pointOnUnitSphere.x);
-	float theta = acos(pointOnUnitSphere.y);
-	float u = phi * ONE_OVER_TWO_PI + 0.5;
-	float v = theta * ONE_OVER_PI;
-	return vec2(u, v);
-}
-
-vec2 calcCylinderUV(vec3 pointOnCylinder, float cylinderHeightRadius, vec3 cylinderPosition)
-{
-	vec3 normalizedPoint = pointOnCylinder - cylinderPosition;
-	// must compute theta before normalizing the intersection point
-	float theta = normalizedPoint.y / (cylinderHeightRadius * 2.0);
-	normalizedPoint = normalize(normalizedPoint);
-	float phi = atan(-normalizedPoint.z, normalizedPoint.x);
-	float u = phi * ONE_OVER_TWO_PI + 0.5;
-	float v = -theta + 0.5; // -theta flips upside-down texture images
-	return vec2(u, v);
-}
-
-vec2 calcUnitCylinderUV(vec3 pointOnUnitCylinder)
-{
-	float phi = atan(-pointOnUnitCylinder.z, pointOnUnitCylinder.x);
-	float theta = pointOnUnitCylinder.y * 0.5;
-	float u = phi * ONE_OVER_TWO_PI + 0.5;
-	float v = -theta + 0.5; // -theta flips upside-down texture images
-	return vec2(u, v);
-}
-
-vec2 calcUnitBoxUV(vec3 pointOnUnitBox, vec3 normal, vec3 boxScale)
-{ // this is a simple tri-planar mapping: if the box normal points to the right or left, use z and x as uv coordinates.
-// If normal points up or down, use x and z as uv coordinates. If normal points forward and backward, use x and y as uv coordinates.
-	     if (normal.z > 0.0)
-		return (vec2( pointOnUnitBox.x, -pointOnUnitBox.y) * 0.5 + 0.5) * vec2(boxScale.x, boxScale.y);
-	else if (normal.z < 0.0) 
-		return (vec2(-pointOnUnitBox.x, -pointOnUnitBox.y) * 0.5 + 0.5) * vec2(boxScale.x, boxScale.y);
-	else if (normal.y > 0.0) 
-		return (vec2( pointOnUnitBox.x,  pointOnUnitBox.z) * 0.5 + 0.5) * vec2(boxScale.x, boxScale.z);
-	else if (normal.y < 0.0) 
-		return (vec2( pointOnUnitBox.x, -pointOnUnitBox.z) * 0.5 + 0.5) * vec2(boxScale.x, boxScale.z);
-	else if (normal.x > 0.0) 
-		return (vec2(-pointOnUnitBox.z, -pointOnUnitBox.y) * 0.5 + 0.5) * vec2(boxScale.z, boxScale.y);
-	else // (normal.x < 0.0)
-		return (vec2( pointOnUnitBox.z, -pointOnUnitBox.y) * 0.5 + 0.5) * vec2(boxScale.z, boxScale.y);
 }
 `;
 
@@ -441,38 +448,6 @@ float SlabIntersect( float radius, vec3 normal, vec3 rayOrigin, vec3 rayDirectio
 	vec3 pOrO = (rad * n) - rayOrigin; 
 	float t = dot(pOrO, n) / denom;
 	return t > 0.0 ? t : INFINITY;
-}
-`;
-
-THREE.ShaderChunk[ 'raytracing_solve_quadratic' ] = `
-
-/* int solveQuadratic(float A, float B, float C, out float t0, out float t1)
-{
-	float discrim = B * B - 4.0 * A * C;
-    
-	if (discrim < 0.0)
-        	return FALSE;
-    
-	discrim = sqrt(discrim);
-	float Q = (B > 0.0) ? -0.5 * (B + discrim) : -0.5 * (B - discrim);
-
-	t0 = C / Q;
-	t1 = Q / A;
-	return TRUE;
-} */
-
-// optimized algorithm for solving quadratic equations developed by Dr. Po-Shen Loh -> https://youtu.be/XKBX0r3J-9Y
-// Adapted to root finding (ray t0/t1) for all quadric shapes (sphere, ellipsoid, cylinder, cone, etc.) by Erich Loftis
-void solveQuadratic(float A, float B, float C, out float t0, out float t1)
-{
-	float invA = 1.0 / A;
-	B *= invA;
-	C *= invA;
-	float neg_halfB = -B * 0.5;
-	float u2 = neg_halfB * neg_halfB - C;
-	float u = u2 < 0.0 ? neg_halfB = 0.0 : sqrt(u2);
-	t0 = neg_halfB - u;
-	t1 = neg_halfB + u;
 }
 `;
 
