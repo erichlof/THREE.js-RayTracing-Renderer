@@ -4,6 +4,7 @@ precision highp sampler2D;
 
 #include <raytracing_uniforms_and_defines>
 
+uniform int uMaterialType;
 uniform sampler2D uUVGridTexture;
 
 #define N_RECTANGLES 1
@@ -101,7 +102,7 @@ float SceneIntersect( int isShadowRay )
 		intersectionPoint = rayOrigin + t * rayDirection;
 		intersectionNormal = intersectionPoint - spheres[2].position;
 		intersectionMaterial = spheres[2].material;
-		intersectionShapeIsClosed = TRUE;
+		intersectionShapeIsClosed = FALSE;
 	}
 	d = SphereIntersect( spheres[3].radius, spheres[3].position, rayOrigin, rayDirection );
 	if (d < t)
@@ -110,7 +111,7 @@ float SceneIntersect( int isShadowRay )
 		intersectionPoint = rayOrigin + t * rayDirection;
 		intersectionNormal = intersectionPoint - spheres[3].position;
 		intersectionMaterial = spheres[3].material;
-		intersectionShapeIsClosed = TRUE;
+		intersectionShapeIsClosed = FALSE;
 	}
 	d = SphereIntersect( spheres[4].radius, spheres[4].position, rayOrigin, rayDirection );
 	if (d < t)
@@ -119,7 +120,7 @@ float SceneIntersect( int isShadowRay )
 		intersectionPoint = rayOrigin + t * rayDirection;
 		intersectionNormal = intersectionPoint - spheres[4].position;
 		intersectionMaterial = spheres[4].material;
-		intersectionShapeIsClosed = TRUE;
+		intersectionShapeIsClosed = FALSE;
 	}
 	d = SphereIntersect( spheres[5].radius, spheres[5].position, rayOrigin, rayDirection );
 	if (d < t)
@@ -128,7 +129,7 @@ float SceneIntersect( int isShadowRay )
 		intersectionPoint = rayOrigin + t * rayDirection;
 		intersectionNormal = intersectionPoint - spheres[5].position;
 		intersectionMaterial = spheres[5].material;
-		intersectionShapeIsClosed = TRUE;
+		intersectionShapeIsClosed = FALSE;
 	}
 	d = SphereIntersect( spheres[6].radius, spheres[6].position, rayOrigin, rayDirection );
 	if (d < t)
@@ -137,7 +138,7 @@ float SceneIntersect( int isShadowRay )
 		intersectionPoint = rayOrigin + t * rayDirection;
 		intersectionNormal = intersectionPoint - spheres[6].position;
 		intersectionMaterial = spheres[6].material;
-		intersectionShapeIsClosed = TRUE;
+		intersectionShapeIsClosed = FALSE;
 	}
 	d = SphereIntersect( spheres[7].radius, spheres[7].position, rayOrigin, rayDirection );
 	if (d < t)
@@ -146,7 +147,7 @@ float SceneIntersect( int isShadowRay )
 		intersectionPoint = rayOrigin + t * rayDirection;
 		intersectionNormal = intersectionPoint - spheres[7].position;
 		intersectionMaterial = spheres[7].material;
-		intersectionShapeIsClosed = TRUE;
+		intersectionShapeIsClosed = FALSE;
 	}
 	d = SphereIntersect( spheres[8].radius, spheres[8].position, rayOrigin, rayDirection );
 	if (d < t)
@@ -155,7 +156,7 @@ float SceneIntersect( int isShadowRay )
 		intersectionPoint = rayOrigin + t * rayDirection;
 		intersectionNormal = intersectionPoint - spheres[8].position;
 		intersectionMaterial = spheres[8].material;
-		intersectionShapeIsClosed = TRUE;
+		intersectionShapeIsClosed = FALSE;
 	}
 	d = SphereIntersect( spheres[9].radius, spheres[9].position, rayOrigin, rayDirection );
 	if (d < t)
@@ -164,7 +165,7 @@ float SceneIntersect( int isShadowRay )
 		intersectionPoint = rayOrigin + t * rayDirection;
 		intersectionNormal = intersectionPoint - spheres[9].position;
 		intersectionMaterial = spheres[9].material;
-		intersectionShapeIsClosed = TRUE;
+		intersectionShapeIsClosed = FALSE;
 	}
 	// reset adjacent bump map spheres for the next bounce
 	spheres[2].radius = 0.0;
@@ -182,10 +183,10 @@ float SceneIntersect( int isShadowRay )
 	{
 		
 		// render large base sphere
-		//t = d;
+		t = d;
 		//intersectionPoint = rayOrigin + d * rayDirection;
 		//intersectionNormal = intersectionPoint - spheres[1].position;
-		//intersectionMaterial = spheres[1].material;
+		intersectionMaterial = spheres[1].material;
 		//intersectionUV = calcSphereUV(intersectionPoint, spheres[1].radius, spheres[1].position) * spheres[1].uvScale;
 		//intersectionShapeIsClosed = TRUE;
 
@@ -194,8 +195,8 @@ float SceneIntersect( int isShadowRay )
 		float theta = acos(normalizedVec.y);
 		float phi = atan(normalizedVec.z, normalizedVec.x);
 		float thetaPlusOne, thetaMinusOne, phiPlusOne, phiMinusOne;
-		float thetaScale = 20.0; //10.0
-		float phiScale = 21.0; //4.0
+		float thetaScale = 10.0; //10.0
+		float phiScale = 11.0; //4.0
 		//float phiScale = mix(30.0, 1.0, abs((theta / PI) * 2.0 - 1.0));
 		//phiScale = round(phiScale);
 		float oneOver_thetaScale = 1.0 / thetaScale;
@@ -224,7 +225,7 @@ float SceneIntersect( int isShadowRay )
 		
 		
 
-		float bumpSphereRadius = 0.03; //0.1
+		float bumpSphereRadius = 0.1; //0.1
 		normalizedVec = vec3( sin(theta) * cos(phi), cos(theta), sin(theta) * sin(phi) );
 		vec3 smallSpherePos = spheres[1].position + (spheres[1].radius * normalizedVec);
 
@@ -268,9 +269,9 @@ float SceneIntersect( int isShadowRay )
 			t = d;
 			intersectionPoint = rayOrigin + t * rayDirection;
 			intersectionNormal = intersectionPoint - smallSpherePos;
-			intersectionMaterial = spheres[1].material;
+			intersectionMaterial = spheres[2].material;
 			intersectionUV = calcSphereUV(intersectionPoint, spheres[1].radius, spheres[1].position) * spheres[1].uvScale;
-			intersectionShapeIsClosed = TRUE;
+			intersectionShapeIsClosed = FALSE;
 		}
 		
 	}
@@ -311,7 +312,9 @@ float SceneIntersect( int isShadowRay )
 		intersectionPoint = rayOrigin + d * rayDirection;
 		intersectionNormal = normal;
 		intersectionMaterial = cylinders[0].material;
+		//vec2 testUV = calcCylinderUV(intersectionPoint, cylinders[0].heightRadius, cylinders[0].position) * cylinders[0].uvScale;
 		intersectionUV = calcCylinderUV(intersectionPoint, cylinders[0].heightRadius, cylinders[0].position) * cylinders[0].uvScale;
+		//intersectionUV.x = testUV.x;
 		intersectionShapeIsClosed = FALSE;
 
 		vec3 normalizedVec = (rayOrigin + d * rayDirection) - cylinders[0].position;
@@ -372,7 +375,9 @@ float SceneIntersect( int isShadowRay )
 			intersectionPoint = rayOrigin + t * rayDirection;
 			intersectionNormal = normal;
 			intersectionMaterial = cylinders[0].material;
+			//vec2 uv = calcCylinderUV(intersectionPoint, cylinders[0].heightRadius, cylinders[0].position) * cylinders[0].uvScale;
 			intersectionUV = calcCylinderUV(intersectionPoint, cylinders[0].heightRadius, cylinders[0].position) * cylinders[0].uvScale;
+			//intersectionUV.y = uv.y;
 			intersectionShapeIsClosed = FALSE;
 		}
 		
@@ -388,7 +393,7 @@ float SceneIntersect( int isShadowRay )
 		intersectionPoint = rayOrigin + t * rayDirection;
 		intersectionNormal = intersectionPoint - spheres[11].position;
 		intersectionMaterial = spheres[11].material;
-		intersectionShapeIsClosed = TRUE;
+		intersectionShapeIsClosed = FALSE;
 	}
 	d = SphereIntersect( spheres[12].radius, spheres[12].position, rayOrigin, rayDirection );
 	if (d < t)
@@ -397,7 +402,7 @@ float SceneIntersect( int isShadowRay )
 		intersectionPoint = rayOrigin + t * rayDirection;
 		intersectionNormal = intersectionPoint - spheres[12].position;
 		intersectionMaterial = spheres[12].material;
-		intersectionShapeIsClosed = TRUE;
+		intersectionShapeIsClosed = FALSE;
 	}
 	d = SphereIntersect( spheres[13].radius, spheres[13].position, rayOrigin, rayDirection );
 	if (d < t)
@@ -406,7 +411,7 @@ float SceneIntersect( int isShadowRay )
 		intersectionPoint = rayOrigin + t * rayDirection;
 		intersectionNormal = intersectionPoint - spheres[13].position;
 		intersectionMaterial = spheres[13].material;
-		intersectionShapeIsClosed = TRUE;
+		intersectionShapeIsClosed = FALSE;
 	}
 	d = SphereIntersect( spheres[14].radius, spheres[14].position, rayOrigin, rayDirection );
 	if (d < t)
@@ -415,7 +420,7 @@ float SceneIntersect( int isShadowRay )
 		intersectionPoint = rayOrigin + t * rayDirection;
 		intersectionNormal = intersectionPoint - spheres[14].position;
 		intersectionMaterial = spheres[14].material;
-		intersectionShapeIsClosed = TRUE;
+		intersectionShapeIsClosed = FALSE;
 	}
 	d = SphereIntersect( spheres[15].radius, spheres[15].position, rayOrigin, rayDirection );
 	if (d < t)
@@ -424,7 +429,7 @@ float SceneIntersect( int isShadowRay )
 		intersectionPoint = rayOrigin + t * rayDirection;
 		intersectionNormal = intersectionPoint - spheres[15].position;
 		intersectionMaterial = spheres[15].material;
-		intersectionShapeIsClosed = TRUE;
+		intersectionShapeIsClosed = FALSE;
 	}
 	d = SphereIntersect( spheres[16].radius, spheres[16].position, rayOrigin, rayDirection );
 	if (d < t)
@@ -433,7 +438,7 @@ float SceneIntersect( int isShadowRay )
 		intersectionPoint = rayOrigin + t * rayDirection;
 		intersectionNormal = intersectionPoint - spheres[16].position;
 		intersectionMaterial = spheres[16].material;
-		intersectionShapeIsClosed = TRUE;
+		intersectionShapeIsClosed = FALSE;
 	}
 	d = SphereIntersect( spheres[17].radius, spheres[17].position, rayOrigin, rayDirection );
 	if (d < t)
@@ -442,7 +447,7 @@ float SceneIntersect( int isShadowRay )
 		intersectionPoint = rayOrigin + t * rayDirection;
 		intersectionNormal = intersectionPoint - spheres[17].position;
 		intersectionMaterial = spheres[17].material;
-		intersectionShapeIsClosed = TRUE;
+		intersectionShapeIsClosed = FALSE;
 	}
 	d = SphereIntersect( spheres[18].radius, spheres[18].position, rayOrigin, rayDirection );
 	if (d < t)
@@ -451,7 +456,7 @@ float SceneIntersect( int isShadowRay )
 		intersectionPoint = rayOrigin + t * rayDirection;
 		intersectionNormal = intersectionPoint - spheres[18].position;
 		intersectionMaterial = spheres[18].material;
-		intersectionShapeIsClosed = TRUE;
+		intersectionShapeIsClosed = FALSE;
 	}
 	// reset adjacent bump map spheres for the next bounce
 	spheres[11].radius = 0.0;
@@ -556,7 +561,7 @@ float SceneIntersect( int isShadowRay )
 			intersectionNormal = intersectionPoint - smallSpherePos;
 			intersectionMaterial = spheres[10].material;
 			intersectionUV = calcSphereUV(intersectionPoint, spheres[10].radius, spheres[10].position) * spheres[10].uvScale;
-			intersectionShapeIsClosed = TRUE;
+			intersectionShapeIsClosed = FALSE;
 		}
 		
 	}
@@ -644,6 +649,14 @@ vec3 RayTrace()
 			}
 			// if we get here, we've done all the bounces/reflections that we can do, so exit
 			break;
+		}
+
+		if (intersectionMaterial.type == TRANSPARENT && intersectionMaterial.IoR == 0.0)
+		{
+			rayOrigin = rayOrigin + t * rayDirection;
+			rayOrigin = rayOrigin + uEPS_intersect * rayDirection;
+			rayDirection = rayDirection;
+			continue;
 		}
 
 		
@@ -899,11 +912,21 @@ void SetupScene(void)
 	float pointLightPower = 10.0;
 	Material pointLightMaterial = Material(POINT_LIGHT, FALSE, vec3(1.0, 1.0, 1.0) * pointLightPower, vec3(0.0, 0.0, 0.0), 0.0, 0.0, -1 );
 	Material blueMaterial = Material(CLEARCOAT, FALSE, vec3(0.01, 0.01, 1.0), vec3(0.0, 0.0, 0.0), 0.0, 1.4, -1);
-	Material redMaterial = Material(PHONG, FALSE, vec3(1.0, 0.01, 0.01), vec3(0.0, 0.0, 0.0), 0.0, 0.0, -1);
+	Material redMaterial = Material(PHONG, FALSE, vec3(1.0, 0.01, 0.01), vec3(0.0, 0.0, 0.0), 1.0, 0.0, -1);
 	Material diffuseUVGridMaterial = Material(PHONG, FALSE, vec3(1.0, 1.0, 1.0), vec3(0.0, 0.0, 0.0), 1.0, 0.0, 0);
-	Material metalMaterial = Material(METAL, FALSE, vec3(1.000, 0.766, 0.336), vec3(0.0, 0.0, 0.0), 0.0, 0.0, -1);
+	Material metalMaterial = Material(METAL, FALSE, vec3(0.972, 0.960, 0.915), vec3(0.0, 0.0, 0.0), 0.0, 0.0, -1);
 	Material glassMaterial = Material(TRANSPARENT, FALSE, vec3(0.4, 1.0, 0.6), vec3(0.0, 0.0, 0.0), 0.0, 1.5, -1);
 	Material grayBlackCheckerMaterial = Material(CLEARCOAT, TRUE, vec3(0.8, 0.8, 0.8), vec3(0.002, 0.002, 0.002), 0.0, 1.4, -1);
+	Material airMaterial = Material(TRANSPARENT, FALSE, vec3(0), vec3(0), 0.0, 0.0, -1);
+	
+	// start with default metal material for this demo
+	Material guiMaterial = metalMaterial;
+	if (uMaterialType == PHONG)
+		guiMaterial = redMaterial;
+	else if (uMaterialType == CLEARCOAT)
+		guiMaterial = blueMaterial;
+	else if (uMaterialType == TRANSPARENT)
+		guiMaterial = glassMaterial;
 
 	vec3 lightPosition = vec3(4, 10, 5);
 	boxes[0] = Box(lightPosition - vec3(0.5), lightPosition + vec3(0.5), vec2(1, 1), pointLightMaterial);
@@ -914,15 +937,15 @@ void SetupScene(void)
 
 	spheres[0] = Sphere(0.2, lightPosition, vec2(1, 1), pointLightMaterial);
 
-	spheres[1] = Sphere(4.0, vec3(-4, 4, 0), vec2(1, 1), blueMaterial);
-	spheres[2] = Sphere(0.0, vec3(0), vec2(1, 1), blueMaterial);
-	spheres[3] = Sphere(0.0, vec3(0), vec2(1, 1), blueMaterial);
-	spheres[4] = Sphere(0.0, vec3(0), vec2(1, 1), blueMaterial);
-	spheres[5] = Sphere(0.0, vec3(0), vec2(1, 1), blueMaterial);
-	spheres[6] = Sphere(0.0, vec3(0), vec2(1, 1), blueMaterial);
-	spheres[7] = Sphere(0.0, vec3(0), vec2(1, 1), blueMaterial);
-	spheres[8] = Sphere(0.0, vec3(0), vec2(1, 1), blueMaterial);
-	spheres[9] = Sphere(0.0, vec3(0), vec2(1, 1), blueMaterial);
+	spheres[1] = Sphere(4.0, vec3(-4, 4, 0), vec2(1, 1), airMaterial);
+	spheres[2] = Sphere(0.0, vec3(0), vec2(1, 1), guiMaterial);
+	spheres[3] = Sphere(0.0, vec3(0), vec2(1, 1), guiMaterial);
+	spheres[4] = Sphere(0.0, vec3(0), vec2(1, 1), guiMaterial);
+	spheres[5] = Sphere(0.0, vec3(0), vec2(1, 1), guiMaterial);
+	spheres[6] = Sphere(0.0, vec3(0), vec2(1, 1), guiMaterial);
+	spheres[7] = Sphere(0.0, vec3(0), vec2(1, 1), guiMaterial);
+	spheres[8] = Sphere(0.0, vec3(0), vec2(1, 1), guiMaterial);
+	spheres[9] = Sphere(0.0, vec3(0), vec2(1, 1), guiMaterial);
 
 	spheres[10] = Sphere(3.0, vec3(11, 3, 2), vec2(1, 1), blueMaterial);
 	spheres[11] = Sphere(0.0, vec3(0), vec2(1, 1), blueMaterial);
