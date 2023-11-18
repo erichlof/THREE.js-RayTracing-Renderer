@@ -3,6 +3,11 @@ let UVGridTexture;
 let imageTexturesTotalCount = 1;
 let numOfImageTexturesLoaded = 0;
 
+let material_TypeObject;
+let material_TypeController;
+let changeMaterialType = false;
+let matType = 0;
+
 
 // called automatically from within initTHREEjs() function (located in InitCommon.js file)
 function initSceneData() 
@@ -35,10 +40,21 @@ function initSceneData()
 
 	// In addition to the default GUI on all demos, add any special GUI elements that this particular demo requires
 	
-
+	material_TypeObject = {
+		LeftSpheres_Material: 'Metal'
+	};
+	
+	function handleMaterialTypeChange() 
+	{
+		changeMaterialType = true;
+	}
+	
+	material_TypeController = gui.add(material_TypeObject, 'LeftSpheres_Material', ['Diffuse', 
+		'Metal', 'ClearCoat Diffuse', 'Transparent Refractive']).onChange(handleMaterialTypeChange);
 
 	// scene/demo-specific uniforms go here     
 	rayTracingUniforms.uUVGridTexture = { value: UVGridTexture };
+	rayTracingUniforms.uMaterialType = { value: 2 };
 
 } // end function initSceneData()
 
@@ -47,6 +63,31 @@ function initSceneData()
 // called automatically from within the animate() function (located in InitCommon.js file)
 function updateVariablesAndUniforms() 
 {   
+	if (changeMaterialType) 
+	{
+		matType = material_TypeController.getValue();
+
+		if (matType == 'Diffuse') 
+		{
+			rayTracingUniforms.uMaterialType.value = 1;
+		}
+		else if (matType == 'Metal') 
+		{
+			rayTracingUniforms.uMaterialType.value = 2;	
+		}
+		else if (matType == 'ClearCoat Diffuse') 
+		{
+			rayTracingUniforms.uMaterialType.value = 3;	
+		}
+		else if (matType == 'Transparent Refractive') 
+		{
+			rayTracingUniforms.uMaterialType.value = 4;
+		}
+			
+		cameraIsMoving = true;
+		changeMaterialType = false;
+	}
+
 
 	// INFO
 	cameraInfoElement.innerHTML = "FOV: " + worldCamera.fov + " / Aperture: " + apertureSize.toFixed(2) + 
