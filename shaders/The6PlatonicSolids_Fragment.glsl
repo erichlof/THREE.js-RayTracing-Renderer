@@ -88,9 +88,9 @@ void GetBoxNodeData(const in float i, inout vec4 boxNodeData0, inout vec4 boxNod
 //---------------------------------------------------------------------------------------
 float SceneIntersect( int isShadowRay )
 //---------------------------------------------------------------------------------------
-{								 //(0.955, 0.637, 0.538)   vec3(1.000, 0.766, 0.336)
-	//Material diffuseMetalMaterial = Material(METAL, FALSE, vec3(0.9, 0.95, 1.0) * 0.4, vec3(1.000, 0.766, 0.336), 0.0, 0.0, -1);
-	Material diffuseMetalMaterial = Material(METAL, FALSE, uMaterialType * 0.5, vec3(1.000, 0.766, 0.336), 0.0, 0.0, -1);
+{
+	
+	Material diffuseMetalMaterial = Material(METAL, FALSE, uMaterialType * 0.42, vec3(1.000, 0.766, 0.336), 0.0, 0.0, -1);
 
 	vec4 currentBoxNodeData0, nodeAData0, nodeBData0, tmpNodeData0;
 	vec4 currentBoxNodeData1, nodeAData1, nodeBData1, tmpNodeData1;
@@ -1079,7 +1079,7 @@ float SceneIntersect( int isShadowRay )
 
 vec3 getSkyColor(vec3 rayDir)
 {
-	vec3 skyColor = mix(vec3(0.4, 0.7, 1.0) * 1.7, vec3(0.005), clamp(exp(rayDir.y * -8.0), 0.0, 1.0));
+	vec3 skyColor = mix(vec3(0.4, 0.7, 1.0) * 0.9, vec3(0.005), clamp(exp(rayDir.y * -8.0), 0.0, 1.0));
 	return skyColor;
 }
 
@@ -1206,7 +1206,7 @@ vec3 RayTrace()
 		{
 			textureColor = texture(uMarbleTexture, intersectionUV).rgb;
 			textureColor *= textureColor; // remove image gamma by raising texture color to the power of 2.2 (but squaring is close enough and cheaper)
-			intersectionMaterial.color *= textureColor; // now that the texture color is in linear space, we can do simple math with it, like multiplying and adding
+			intersectionMaterial.color *= (textureColor * 0.7); // now that the texture color is in linear space, we can do simple math with it, like multiplying and adding
 		}
 
 		if (intersectionMaterial.isCheckered == TRUE)
