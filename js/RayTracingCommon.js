@@ -36,6 +36,7 @@ in vec2 vUv;
 #define METAL 2
 #define CLEARCOAT 3
 #define TRANSPARENT 4
+#define DIFFUSE_METAL 5
 #define TRUE 1
 #define FALSE 0
 `;
