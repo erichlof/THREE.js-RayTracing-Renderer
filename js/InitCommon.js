@@ -244,8 +244,8 @@ function FirstPersonCameraControls(camera)
 } // end function FirstPersonCameraControls(camera)
 
 
-// the 'type' function argument below is a string in JavaScript. Possible string values are: "rectangle", "disk", "box", "sphere", "cylinder",
-// "capped cylinder", "cone", "capped cone", "paraboloid", "capped paraboloid", "hyperboloid", "hyperbolic paraboloid", "capsule", "triangular wedge"
+// the 'type' function argument below is a string in JavaScript. Possible string values are: "rectangle", "disk", "box", "sphere", "cylinder", "capped cylinder", 
+// "cone", "capped cone", "paraboloid", "capped paraboloid", "hyperboloid", "hyperbolic paraboloid", "capsule", "triangular wedge", "convex polyhedron"
 function RayTracingShape(type)
 {
 	this.type = type;
