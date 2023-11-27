@@ -94,6 +94,8 @@ function initSceneData()
 	
 	EPS_intersect = 0.01;
 	
+	// in order to match the color palette of this classic scene, the tone mapper is not needed
+	useToneMapping = false;
 
 	// set camera's field of view and other options
 	worldCamera.fov = 30;
