@@ -167,15 +167,7 @@ float SceneIntersect( int isShadowRay )
 		intersectionMaterial = spheres[9].material;
 		intersectionShapeIsClosed = FALSE;
 	}
-	// reset adjacent bump map spheres for the next bounce
-	spheres[2].radius = 0.0;
-	spheres[3].radius = 0.0;
-	spheres[4].radius = 0.0;
-	spheres[5].radius = 0.0;
-	spheres[6].radius = 0.0;
-	spheres[7].radius = 0.0;
-	spheres[8].radius = 0.0;
-	spheres[9].radius = 0.0;
+	
 
 	// large base sphere
 	d = SphereIntersect( spheres[1].radius, spheres[1].position, rayOrigin, rayDirection );
@@ -297,11 +289,7 @@ float SceneIntersect( int isShadowRay )
 		intersectionShapeIsClosed = FALSE;
 	}
 
-	// reset adjacent bump map cylinders for the next bounce
-	cylinders[1].widthRadius = 0.0;
-	cylinders[1].heightRadius = 0.0;
-	cylinders[2].widthRadius = 0.0;
-	cylinders[2].heightRadius = 0.0;
+	
 
 	// large base cylinder
 	d = CylinderIntersect( cylinders[0].widthRadius, cylinders[0].heightRadius, cylinders[0].position, rayOrigin, rayDirection, normal );
@@ -458,15 +446,7 @@ float SceneIntersect( int isShadowRay )
 		intersectionMaterial = spheres[18].material;
 		intersectionShapeIsClosed = FALSE;
 	}
-	// reset adjacent bump map spheres for the next bounce
-	spheres[11].radius = 0.0;
-	spheres[12].radius = 0.0;
-	spheres[13].radius = 0.0;
-	spheres[14].radius = 0.0;
-	spheres[15].radius = 0.0;
-	spheres[16].radius = 0.0;
-	spheres[17].radius = 0.0;
-	spheres[18].radius = 0.0;
+	
 
 	// large base sphere
 	d = SphereIntersect( spheres[10].radius, spheres[10].position, rayOrigin, rayDirection );
