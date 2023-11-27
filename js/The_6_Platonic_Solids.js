@@ -490,7 +490,7 @@ function updateVariablesAndUniforms()
 
 marbleTexture = textureLoader.load(
 	// resource URL
-	'textures/marble.png',
+	'textures/marble0.png',
 
 	// onLoad callback
 	function (texture)
