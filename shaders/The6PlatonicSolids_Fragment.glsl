@@ -647,37 +647,7 @@ float SceneIntersect( int isShadowRay )
 		intersectionShapeIsClosed = FALSE;
 	}
 
-	// reset adjacent bump map cylinders for the next bounce
-	cylinders[1].widthRadius = 0.0;
-	cylinders[1].heightRadius = 0.0;
-	cylinders[2].widthRadius = 0.0;
-	cylinders[2].heightRadius = 0.0;
-
-	cylinders[4].widthRadius = 0.0;
-	cylinders[4].heightRadius = 0.0;
-	cylinders[5].widthRadius = 0.0;
-	cylinders[5].heightRadius = 0.0;
-
-	cylinders[7].widthRadius = 0.0;
-	cylinders[7].heightRadius = 0.0;
-	cylinders[8].widthRadius = 0.0;
-	cylinders[8].heightRadius = 0.0;
-
-	cylinders[10].widthRadius = 0.0;
-	cylinders[10].heightRadius = 0.0;
-	cylinders[11].widthRadius = 0.0;
-	cylinders[11].heightRadius = 0.0;
-
-	cylinders[13].widthRadius = 0.0;
-	cylinders[13].heightRadius = 0.0;
-	cylinders[14].widthRadius = 0.0;
-	cylinders[14].heightRadius = 0.0;
-
-	cylinders[16].widthRadius = 0.0;
-	cylinders[16].heightRadius = 0.0;
-	cylinders[17].widthRadius = 0.0;
-	cylinders[17].heightRadius = 0.0;
-
+	
 
 	// large base cylinder
 	d = CylinderIntersect( cylinders[0].widthRadius, cylinders[0].heightRadius, cylinders[0].position, rayOrigin, rayDirection, normal );
