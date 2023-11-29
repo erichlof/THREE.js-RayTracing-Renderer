@@ -171,7 +171,7 @@ function FirstPersonCameraControls(camera)
 	pitchObject.add(camera);
 
 	let yawObject = new THREE.Object3D();
-	yawObject.add(pitchObject);
+	yawObject.add(pitchObject); 
 
 	let movementX = 0;
 	let movementY = 0;
@@ -614,6 +614,7 @@ function initTHREEjs()
 	rayTracingUniforms.uApertureSize = { type: "f", value: apertureSize };
 	rayTracingUniforms.uFocusDistance = { type: "f", value: focusDistance };
 
+	rayTracingUniforms.uSceneIsDynamic = { type: "b1", value: sceneIsDynamic };
 	rayTracingUniforms.uCameraIsMoving = { type: "b1", value: false };
 	rayTracingUniforms.uUseOrthographicCamera = { type: "b1", value: false };
 
@@ -685,9 +686,7 @@ function initTHREEjs()
 
 	screenOutputUniforms = {
 		uRayTracedImageTexture: { type: "t", value: rayTracingRenderTarget.texture },
-		uSampleCounter: { type: "f", value: 0.0 },
 		uOneOverSampleCounter: { type: "f", value: 0.0 },
-		uSceneIsDynamic: { type: "b1", value: sceneIsDynamic },
 		uUseToneMapping: { type: "b1", value: useToneMapping }
 	};
 
@@ -1020,7 +1019,7 @@ function animate()
 
 		if (!cameraRecentlyMoving)
 		{
-			// record current sampleCounter before it gets set to 1.0 below
+			// record current sampleCounter before sampleCounter gets set to 1.0 below
 			rayTracingUniforms.uPreviousSampleCount.value = sampleCounter;
 			frameCounter = 1.0;
 			cameraRecentlyMoving = true;
@@ -1030,6 +1029,7 @@ function animate()
 	}
 
 	rayTracingUniforms.uTime.value = elapsedTime;
+	rayTracingUniforms.uSceneIsDynamic.value = sceneIsDynamic;
 	rayTracingUniforms.uCameraIsMoving.value = cameraIsMoving;
 	rayTracingUniforms.uSampleCounter.value = sampleCounter;
 	rayTracingUniforms.uFrameCounter.value = frameCounter;
@@ -1040,10 +1040,10 @@ function animate()
 	worldCamera.updateMatrixWorld(true);
 	rayTracingUniforms.uCameraMatrix.value.copy(worldCamera.matrixWorld);
 
-	screenOutputUniforms.uSampleCounter.value = sampleCounter;
+
 	// PROGRESSIVE SAMPLE WEIGHT (reduces intensity of each successive animation frame's image)
 	screenOutputUniforms.uOneOverSampleCounter.value = 1.0 / sampleCounter;
-
+	
 
 	// RENDERING in 3 steps
 
