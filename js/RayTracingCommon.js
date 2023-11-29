@@ -13,6 +13,7 @@ uniform float uVLen;
 uniform float uApertureSize;
 uniform float uFocusDistance;
 uniform float uPreviousSampleCount;
+uniform bool uSceneIsDynamic;
 uniform bool uCameraIsMoving;
 uniform bool uUseOrthographicCamera;
 
@@ -269,6 +270,15 @@ void main( void )
 		previousPixel.rgb *= 0.5; // motion-blur trail amount (old image)
 		currentPixel.rgb *= 0.5; // brightness of new image (noisy)
 	}
+	else if (uSceneIsDynamic) // scene objects are dynamically changing
+	{
+		previousPixel.rgb *= 0.7; // motion-blur trail amount (old image)
+		currentPixel.rgb *= 0.3; // brightness of new image (noisy)
+	}
+	// else if none of the above are true and the scene and camera are both static, just keep adding current sample to the previous samples 
+	// (code line below). Although this accumulation will go way over the rgb(1,1,1) limits, in the very next shader stage 
+	// (screenOutput_Fragment.glsl), it divides these huge rgb values by the number of samples taken, averaging everything out 
+	// to the rgb(0-1, 0-1, 0-1) range again for final screen output - this is how progressive rendering/refinement of the image is achieved.
 
 	pc_fragColor = vec4(previousPixel.rgb + currentPixel.rgb, currentPixel.a);
 }
