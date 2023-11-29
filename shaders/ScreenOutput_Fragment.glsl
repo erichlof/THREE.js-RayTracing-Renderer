@@ -3,12 +3,7 @@ precision highp int;
 precision highp sampler2D;
 
 uniform sampler2D uRayTracedImageTexture;
-//uniform float uSampleCounter;
 uniform float uOneOverSampleCounter;
-//uniform float uPixelEdgeSharpness;
-//uniform float uEdgeSharpenSpeed;
-//uniform float uFilterDecaySpeed;
-uniform bool uSceneIsDynamic;
 uniform bool uUseToneMapping;
 
 
