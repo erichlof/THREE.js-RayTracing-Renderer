@@ -221,7 +221,7 @@ vec3 RayTrace()
 		{	
 			if (bounces == 0) // if this is the initial camera ray, set it to the light's color and exit 
 			{
-				accumulatedColor = clamp(pointLightMaterial.color, 0.0, 4.0);
+				accumulatedColor = clamp(lightColor, 0.0, 4.0);
 				break;
 			}	
 				
@@ -232,7 +232,7 @@ vec3 RayTrace()
 			}
 			else
 			{
-				accumulatedColor += rayColorMask * clamp(pointLightMaterial.color, 0.0, 2.0);
+				accumulatedColor += rayColorMask * clamp(lightColor, 0.0, 2.0);
 			}
 			// if the shadow ray that reached the light source was from a ClearCoat Diffuse object, after adding its diffuse color and specular highlights (above),
 			// we need to rewind back to the surface and then follow the reflection ray path, in order to gather the mirror reflections on the shiny clearcoat.
