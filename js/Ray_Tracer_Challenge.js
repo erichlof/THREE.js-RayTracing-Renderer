@@ -26,6 +26,9 @@ function initSceneData()
 	demoFragmentShaderFileName = 'RayTracerChallenge_Fragment.glsl';
 
 	// scene/demo-specific three.js objects setup goes here
+
+	// this demo opens up with a static scene, but as soon as the user selects an animation from the menu, 
+	// the scene will be changed to dynamic (sceneIsDynamic = true)
 	sceneIsDynamic = false;
 
 	// Since this demo has a pure white background, turn tone mapping Off - otherwise, background will appear light gray when run through the tone mapper.  
@@ -35,6 +38,9 @@ function initSceneData()
 	// change webpage's info text to black so it shows up against the white background 
 	infoElement.style.color = 'rgb(0,0,0)';
 	cameraInfoElement.style.color = 'rgb(0,0,0)';
+
+	// mobile devices must use darker buttons so that they show up against the white background
+	mobileUseDarkButtons = true;
 
 	// pixelRatio is resolution - range: 0.5(half resolution) to 1.0(full resolution)
 	pixelRatio = mouseControl ? 0.75 : 0.75; // less demanding on battery-powered mobile devices
