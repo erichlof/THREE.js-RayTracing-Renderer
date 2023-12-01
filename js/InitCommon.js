@@ -46,6 +46,7 @@ let cameraRecentlyMoving = false;
 let isPaused = true;
 let oldYawRotation, oldPitchRotation;
 let mobileJoystickControls = null;
+let mobileShowButtons = true;
 let mobileUseDarkButtons = false;
 let oldDeltaX = 0;
 let oldDeltaY = 0;
@@ -307,7 +308,7 @@ function onWindowResize(event)
 	rayTracingUniforms.uVLen.value = Math.tan(fovScale);
 	rayTracingUniforms.uULen.value = rayTracingUniforms.uVLen.value * worldCamera.aspect;
 
-	if (!mouseControl)
+	if (!mouseControl && mobileShowButtons)
 	{
 		button1Element.style.display = "";
 		button2Element.style.display = "";
@@ -348,7 +349,7 @@ function onWindowResize(event)
 			button5Element.style.bottom = 48 + "%";
 			button6Element.style.bottom = 34 + "%";
 		}
-	} // end if ( !mouseControl ) {
+	} // end if (!mouseControl && mobileShowButtons)
 
 } // end function onWindowResize( event )
 
@@ -584,6 +585,7 @@ function initTHREEjs()
 	{
 		mobileJoystickControls = new MobileJoystickControls({
 			//showJoystick: true,
+			showButtons: mobileShowButtons,
 			useDarkButtons: mobileUseDarkButtons
 		});
 	}
