@@ -40,6 +40,7 @@ in vec2 vUv;
 #define DIFFUSE_METAL 5
 #define TRUE 1
 #define FALSE 0
+#define ONE_OVER_MAX_INT 1.0 / float(0xffffffffU)
 `;
 
 
@@ -67,7 +68,7 @@ float rng()
 	seed += uvec2(1);
     	uvec2 q = 1103515245U * ( (seed >> 1U) ^ (seed.yx) );
     	uint  n = 1103515245U * ( (q.x) ^ (q.y >> 3U) );
-	return float(n) * (1.0 / float(0xffffffffU));
+	return float(n) * ONE_OVER_MAX_INT;// (1.0 / float(0xffffffffU));
 }
 
 // tentFilter from Peter Shirley's 'Realistic Ray Tracing (2nd Edition)' book, pg. 60
