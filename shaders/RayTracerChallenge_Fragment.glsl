@@ -76,7 +76,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 	if (d > 0.0 && d < t)
 	{
 		t = d;
-		intersectionPoint = rObjOrigin + t * rObjDirection;
+		intersectionPoint = rObjOrigin + (t * rObjDirection);
 		intersectionNormal = transpose(mat3(uGlassSphereInvMatrix)) * normal;
 		intersectionMaterial = spheres[0].material;
 		intersectionUV = calcUnitSphereUV(intersectionPoint) * spheres[0].uvScale;
@@ -91,7 +91,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 	if (d > 0.0 && d < t)
 	{
 		t = d;
-		intersectionPoint = rObjOrigin + t * rObjDirection; // intersection in box's object space, vec3(-1,-1,-1) to vec3(+1,+1,+1)
+		intersectionPoint = rObjOrigin + (t * rObjDirection); // intersection in box's object space, vec3(-1,-1,-1) to vec3(+1,+1,+1)
 		absPoint = abs(intersectionPoint);
 		// start out with default Z normal of (0,0,-1) or (0,0,+1)
 		normal = vec3(0, 0, intersectionPoint.z);
@@ -110,7 +110,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 	if (d > 0.0 && d < t)
 	{
 		t = d;
-		intersectionPoint = rObjOrigin + t * rObjDirection; // intersection in box's object space, vec3(-1,-1,-1) to vec3(+1,+1,+1)
+		intersectionPoint = rObjOrigin + (t * rObjDirection); // intersection in box's object space, vec3(-1,-1,-1) to vec3(+1,+1,+1)
 		absPoint = abs(intersectionPoint);
 		// start out with default Z normal of (0,0,-1) or (0,0,+1)
 		normal = vec3(0, 0, intersectionPoint.z);
@@ -129,7 +129,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 	if (d > 0.0 && d < t)
 	{
 		t = d;
-		intersectionPoint = rObjOrigin + t * rObjDirection; // intersection in box's object space, vec3(-1,-1,-1) to vec3(+1,+1,+1)
+		intersectionPoint = rObjOrigin + (t * rObjDirection); // intersection in box's object space, vec3(-1,-1,-1) to vec3(+1,+1,+1)
 		absPoint = abs(intersectionPoint);
 		// start out with default Z normal of (0,0,-1) or (0,0,+1)
 		normal = vec3(0, 0, intersectionPoint.z);
@@ -148,7 +148,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 	if (d > 0.0 && d < t)
 	{
 		t = d;
-		intersectionPoint = rObjOrigin + t * rObjDirection; // intersection in box's object space, vec3(-1,-1,-1) to vec3(+1,+1,+1)
+		intersectionPoint = rObjOrigin + (t * rObjDirection); // intersection in box's object space, vec3(-1,-1,-1) to vec3(+1,+1,+1)
 		absPoint = abs(intersectionPoint);
 		// start out with default Z normal of (0,0,-1) or (0,0,+1)
 		normal = vec3(0, 0, intersectionPoint.z);
@@ -167,7 +167,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 	if (d > 0.0 && d < t)
 	{
 		t = d;
-		intersectionPoint = rObjOrigin + t * rObjDirection; // intersection in box's object space, vec3(-1,-1,-1) to vec3(+1,+1,+1)
+		intersectionPoint = rObjOrigin + (t * rObjDirection); // intersection in box's object space, vec3(-1,-1,-1) to vec3(+1,+1,+1)
 		absPoint = abs(intersectionPoint);
 		// start out with default Z normal of (0,0,-1) or (0,0,+1)
 		normal = vec3(0, 0, intersectionPoint.z);
@@ -186,7 +186,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 	if (d > 0.0 && d < t)
 	{
 		t = d;
-		intersectionPoint = rObjOrigin + t * rObjDirection; // intersection in box's object space, vec3(-1,-1,-1) to vec3(+1,+1,+1)
+		intersectionPoint = rObjOrigin + (t * rObjDirection); // intersection in box's object space, vec3(-1,-1,-1) to vec3(+1,+1,+1)
 		absPoint = abs(intersectionPoint);
 		// start out with default Z normal of (0,0,-1) or (0,0,+1)
 		normal = vec3(0, 0, intersectionPoint.z);
@@ -205,7 +205,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 	if (d > 0.0 && d < t)
 	{
 		t = d;
-		intersectionPoint = rObjOrigin + t * rObjDirection; // intersection in box's object space, vec3(-1,-1,-1) to vec3(+1,+1,+1)
+		intersectionPoint = rObjOrigin + (t * rObjDirection); // intersection in box's object space, vec3(-1,-1,-1) to vec3(+1,+1,+1)
 		absPoint = abs(intersectionPoint);
 		// start out with default Z normal of (0,0,-1) or (0,0,+1)
 		normal = vec3(0, 0, intersectionPoint.z);
@@ -224,7 +224,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 	if (d > 0.0 && d < t)
 	{
 		t = d;
-		intersectionPoint = rObjOrigin + t * rObjDirection; // intersection in box's object space, vec3(-1,-1,-1) to vec3(+1,+1,+1)
+		intersectionPoint = rObjOrigin + (t * rObjDirection); // intersection in box's object space, vec3(-1,-1,-1) to vec3(+1,+1,+1)
 		absPoint = abs(intersectionPoint);
 		// start out with default Z normal of (0,0,-1) or (0,0,+1)
 		normal = vec3(0, 0, intersectionPoint.z);
@@ -243,7 +243,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 	if (d > 0.0 && d < t)
 	{
 		t = d;
-		intersectionPoint = rObjOrigin + t * rObjDirection; // intersection in box's object space, vec3(-1,-1,-1) to vec3(+1,+1,+1)
+		intersectionPoint = rObjOrigin + (t * rObjDirection); // intersection in box's object space, vec3(-1,-1,-1) to vec3(+1,+1,+1)
 		absPoint = abs(intersectionPoint);
 		// start out with default Z normal of (0,0,-1) or (0,0,+1)
 		normal = vec3(0, 0, intersectionPoint.z);
@@ -262,7 +262,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 	if (d > 0.0 && d < t)
 	{
 		t = d;
-		intersectionPoint = rObjOrigin + t * rObjDirection; // intersection in box's object space, vec3(-1,-1,-1) to vec3(+1,+1,+1)
+		intersectionPoint = rObjOrigin + (t * rObjDirection); // intersection in box's object space, vec3(-1,-1,-1) to vec3(+1,+1,+1)
 		absPoint = abs(intersectionPoint);
 		// start out with default Z normal of (0,0,-1) or (0,0,+1)
 		normal = vec3(0, 0, intersectionPoint.z);
@@ -281,7 +281,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 	if (d > 0.0 && d < t)
 	{
 		t = d;
-		intersectionPoint = rObjOrigin + t * rObjDirection; // intersection in box's object space, vec3(-1,-1,-1) to vec3(+1,+1,+1)
+		intersectionPoint = rObjOrigin + (t * rObjDirection); // intersection in box's object space, vec3(-1,-1,-1) to vec3(+1,+1,+1)
 		absPoint = abs(intersectionPoint);
 		// start out with default Z normal of (0,0,-1) or (0,0,+1)
 		normal = vec3(0, 0, intersectionPoint.z);
@@ -300,7 +300,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 	if (d > 0.0 && d < t)
 	{
 		t = d;
-		intersectionPoint = rObjOrigin + t * rObjDirection; // intersection in box's object space, vec3(-1,-1,-1) to vec3(+1,+1,+1)
+		intersectionPoint = rObjOrigin + (t * rObjDirection); // intersection in box's object space, vec3(-1,-1,-1) to vec3(+1,+1,+1)
 		absPoint = abs(intersectionPoint);
 		// start out with default Z normal of (0,0,-1) or (0,0,+1)
 		normal = vec3(0, 0, intersectionPoint.z);
@@ -319,7 +319,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 	if (d > 0.0 && d < t)
 	{
 		t = d;
-		intersectionPoint = rObjOrigin + t * rObjDirection; // intersection in box's object space, vec3(-1,-1,-1) to vec3(+1,+1,+1)
+		intersectionPoint = rObjOrigin + (t * rObjDirection); // intersection in box's object space, vec3(-1,-1,-1) to vec3(+1,+1,+1)
 		absPoint = abs(intersectionPoint);
 		// start out with default Z normal of (0,0,-1) or (0,0,+1)
 		normal = vec3(0, 0, intersectionPoint.z);
@@ -338,7 +338,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 	if (d > 0.0 && d < t)
 	{
 		t = d;
-		intersectionPoint = rObjOrigin + t * rObjDirection; // intersection in box's object space, vec3(-1,-1,-1) to vec3(+1,+1,+1)
+		intersectionPoint = rObjOrigin + (t * rObjDirection); // intersection in box's object space, vec3(-1,-1,-1) to vec3(+1,+1,+1)
 		absPoint = abs(intersectionPoint);
 		// start out with default Z normal of (0,0,-1) or (0,0,+1)
 		normal = vec3(0, 0, intersectionPoint.z);
@@ -357,7 +357,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 	if (d > 0.0 && d < t)
 	{
 		t = d;
-		intersectionPoint = rObjOrigin + t * rObjDirection; // intersection in box's object space, vec3(-1,-1,-1) to vec3(+1,+1,+1)
+		intersectionPoint = rObjOrigin + (t * rObjDirection); // intersection in box's object space, vec3(-1,-1,-1) to vec3(+1,+1,+1)
 		absPoint = abs(intersectionPoint);
 		// start out with default Z normal of (0,0,-1) or (0,0,+1)
 		normal = vec3(0, 0, intersectionPoint.z);
@@ -376,7 +376,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 	if (d > 0.0 && d < t)
 	{
 		t = d;
-		intersectionPoint = rObjOrigin + t * rObjDirection; // intersection in box's object space, vec3(-1,-1,-1) to vec3(+1,+1,+1)
+		intersectionPoint = rObjOrigin + (t * rObjDirection); // intersection in box's object space, vec3(-1,-1,-1) to vec3(+1,+1,+1)
 		absPoint = abs(intersectionPoint);
 		// start out with default Z normal of (0,0,-1) or (0,0,+1)
 		normal = vec3(0, 0, intersectionPoint.z);
@@ -395,7 +395,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 	if (d > 0.0 && d < t)
 	{
 		t = d;
-		intersectionPoint = rObjOrigin + t * rObjDirection; // intersection in box's object space, vec3(-1,-1,-1) to vec3(+1,+1,+1)
+		intersectionPoint = rObjOrigin + (t * rObjDirection); // intersection in box's object space, vec3(-1,-1,-1) to vec3(+1,+1,+1)
 		absPoint = abs(intersectionPoint);
 		// start out with default Z normal of (0,0,-1) or (0,0,+1)
 		normal = vec3(0, 0, intersectionPoint.z);
@@ -566,7 +566,7 @@ vec3 RayTrace()
 		// if it is determined that the shading normal is pointing in the same direction as the ray (or nearly the same), it means the normal is on the wrong side of the surface and we must flip it (negate it)
 		geometryNormal = normalize(intersectionNormal); // geometry normals are the unaltered normals from the intersected shape definition / or from the triangle mesh data
                 shadingNormal = dot(geometryNormal, rayDirection) < 0.0 ? geometryNormal : -geometryNormal; // if geometry normal is pointing in the same manner as ray, must flip the shading normal (negate it) 
-		intersectionPoint = rayOrigin + t * rayDirection; // use the ray equation to find intersection point (P = O + tD)
+		intersectionPoint = rayOrigin + (t * rayDirection); // use the ray equation to find intersection point (P = O + tD)
 		// the directionToLight vector will point from the intersected surface either towards the Sun, or up to the point light position
 		directionToLight = (sceneUsesDirectionalLight == TRUE) ? directionToSunlight : normalize(pointLightPosition - intersectionPoint);
 
@@ -597,7 +597,7 @@ vec3 RayTrace()
 			// the Diffuse and Specular lighting may be added. If it fails to find the light source (another object is in the way), the surface is left in shadow with Ambient light only.
 			isShadowRay = TRUE;
 			// first we must nudge shadow ray origin out from the surface (along the surface normal) just a little bit, in order to avoid self-intersection on the next bounces loop iteration
-			rayOrigin = intersectionPoint + uEPS_intersect * shadingNormal;
+			rayOrigin = intersectionPoint + (uEPS_intersect * shadingNormal);
 			rayDirection = directionToLight; // all shadow rays go directly toward the light
 			continue; // continue next with shadow ray towards the light source
                 } */
@@ -626,13 +626,13 @@ vec3 RayTrace()
 			{
 				willNeedReflectionRay = TRUE; // this flag will let the future code know that it needs to rewind time and trace the saved reflection ray
 				reflectionRayColorMask = rayColorMask * reflectance * clamp(1.0 - (intersectionMaterial.roughness * 1.2), 0.001, 1.0); // weight reflected ray with reflectance value we got
-				reflectionRayOrigin = intersectionPoint + uEPS_intersect * shadingNormal; // nudge the reflection rayOrigin out from the surface to avoid self-intersection
+				reflectionRayOrigin = intersectionPoint + (uEPS_intersect * shadingNormal); // nudge the reflection rayOrigin out from the surface to avoid self-intersection
 				reflectionRayDirection = reflect(rayDirection, shadingNormal);
 			}
 			// First, send out the usual shadow ray for the diffuse part of this surface. When that's done with its job, the saved reflection ray will take over.  
 			// The reflection ray above will start right back at this same spot on the surface, but will go off on its own mirror reflection trajectory.
 			isShadowRay = TRUE;
-			rayOrigin = intersectionPoint + uEPS_intersect * shadingNormal; // nudge the shadow rayOrigin out from the surface to avoid self-intersection
+			rayOrigin = intersectionPoint + (uEPS_intersect * shadingNormal); // nudge the shadow rayOrigin out from the surface to avoid self-intersection
 			rayDirection = directionToLight; // all shadow rays go directly toward the light
 			continue; // continue next with shadow ray towards the light source
 		}
@@ -659,13 +659,13 @@ vec3 RayTrace()
 			{
 				willNeedReflectionRay = TRUE;
 				reflectionRayColorMask = rayColorMask * reflectance * clamp(1.0 - (intersectionMaterial.roughness * 1.2), 0.001, 1.0);
-				reflectionRayOrigin = intersectionPoint + uEPS_intersect * shadingNormal; // nudge the reflection rayOrigin out from the surface to avoid self-intersection
+				reflectionRayOrigin = intersectionPoint + (uEPS_intersect * shadingNormal); // nudge the reflection rayOrigin out from the surface to avoid self-intersection
 				reflectionRayDirection = reflect(rayDirection, shadingNormal);
 			}
 			if (reflectance == 1.0 && isShadowRay == FALSE) // total internal reflection occured - all light is mirror reflection only, because refraction/transmittance is physically impossible for this viewing angle
 			{
 				rayColorMask = rayColorMask * reflectance * clamp(1.0 - (intersectionMaterial.roughness * 1.2), 0.001, 1.0); // weight reflected ray with reflectance value we got
-				rayOrigin = intersectionPoint + uEPS_intersect * shadingNormal; // nudge the reflection rayOrigin out from the surface to avoid self-intersection
+				rayOrigin = intersectionPoint + (uEPS_intersect * shadingNormal); // nudge the reflection rayOrigin out from the surface to avoid self-intersection
 				rayDirection = reflect(rayDirection, shadingNormal);
 
 				willNeedReflectionRay = FALSE;
@@ -682,7 +682,7 @@ vec3 RayTrace()
 			if (isShadowRay == FALSE) // do usual refraction - this is the case most often
 			{
 				// note the minus(-) sign below, which nudges the rayOrigin below the surface along the normal, instead of above it (like for the usual bounced reflections) 
-				rayOrigin = intersectionPoint - uEPS_intersect * shadingNormal; // nudge transmitted rayOrigin below the surface to avoid self-intersection
+				rayOrigin = intersectionPoint - (uEPS_intersect * shadingNormal); // nudge transmitted rayOrigin below the surface to avoid self-intersection
 				rayDirection = refract(rayDirection, shadingNormal, IoR_ratio); // ray is now refracted through the material, according to Snell's Law
 			}
 			else // special case: shadow rays are allowed to penetrate transparent surfaces un-refracted, in order to generate 'shadow' caustics (a clever technique found in the Hall Lighting Model)
@@ -690,7 +690,7 @@ vec3 RayTrace()
 				diffuseContribution *= intersectionMaterial.color; // color future-generated caustics with the transparent material color
 				diffuseContribution *= max(0.2, transmittance); // the light that generates the caustics only accounts for the transmitted portion, so weight it accordingly
 				diffuseContribution *= clamp(1.0 - (intersectionMaterial.roughness * 1.2), 0.001, 1.0); // inverse relationship: as roughness increases, caustics brightness decreases
-				rayOrigin = intersectionPoint + uEPS_intersect * rayDirection; // nudge the caustics rayOrigin through the surface along the same rayDirection to avoid self-intersection
+				rayOrigin = intersectionPoint + (uEPS_intersect * rayDirection); // nudge the caustics rayOrigin through the surface along the same rayDirection to avoid self-intersection
 				rayDirection = rayDirection; // ray direction is unchanged - the caustics ray is allowed to pass through (un-refracted)
 			}
 			
