@@ -269,7 +269,7 @@ float SceneIntersect( int isShadowRay )
 		// or, triangle face normal for flat-shaded, low-poly look
 		normal = ( cross(vec3(vd0.w, vd1.xy) - vec3(vd0.xyz), vec3(vd1.zw, vd2.x) - vec3(vd0.xyz)) );
 		intersectionNormal = transpose(mat3(uTeapotInvMatrix)) * normal;
-		intersectionUV = triangleW * vec2(vd4.zw) + triangleU * vec2(vd5.xy) + triangleV * vec2(vd5.zw);
+		intersectionUV = (triangleW * vec2(vd4.zw)) + (triangleU * vec2(vd5.xy)) + (triangleV * vec2(vd5.zw));
 		intersectionMaterial = diffuseMetalMaterial;
 
 	} // end if (triangleLookupNeeded == TRUE)
@@ -412,7 +412,7 @@ float SceneIntersect( int isShadowRay )
 	if (d < t)
 	{
 		t = d;
-		intersectionPoint = rayOrigin + t * rayDirection;
+		intersectionPoint = rayOrigin + (t * rayDirection);
 		intersectionNormal = normal;
 		intersectionMaterial = boxes[0].material;
 		intersectionUV = calcUnitBoxUV(intersectionPoint, normal, vec3(1,1,1)) * boxes[0].uvScale;
@@ -422,7 +422,7 @@ float SceneIntersect( int isShadowRay )
 	if (d < t)
 	{
 		t = d;
-		intersectionPoint = rayOrigin + t * rayDirection;
+		intersectionPoint = rayOrigin + (t * rayDirection);
 		intersectionNormal = normal;
 		intersectionMaterial = boxes[1].material;
 		intersectionUV = calcUnitBoxUV(intersectionPoint, normal, vec3(-1,1,1)) * boxes[1].uvScale;
@@ -432,7 +432,7 @@ float SceneIntersect( int isShadowRay )
 	if (d < t)
 	{
 		t = d;
-		intersectionPoint = rayOrigin + t * rayDirection;
+		intersectionPoint = rayOrigin + (t * rayDirection);
 		intersectionNormal = normal;
 		intersectionMaterial = boxes[2].material;
 		intersectionUV = calcUnitBoxUV(intersectionPoint, normal, vec3(1,-1,1)) * boxes[2].uvScale;
@@ -442,7 +442,7 @@ float SceneIntersect( int isShadowRay )
 	if (d < t)
 	{
 		t = d;
-		intersectionPoint = rayOrigin + t * rayDirection;
+		intersectionPoint = rayOrigin + (t * rayDirection);
 		intersectionNormal = normal;
 		intersectionMaterial = boxes[3].material;
 		intersectionUV = calcUnitBoxUV(intersectionPoint, normal, vec3(1,1,-1)) * boxes[3].uvScale;
@@ -452,7 +452,7 @@ float SceneIntersect( int isShadowRay )
 	if (d < t)
 	{
 		t = d;
-		intersectionPoint = rayOrigin + t * rayDirection;
+		intersectionPoint = rayOrigin + (t * rayDirection);
 		intersectionNormal = normal;
 		intersectionMaterial = boxes[4].material;
 		intersectionUV = calcUnitBoxUV(intersectionPoint, normal, vec3(-1,-1,1)) * boxes[4].uvScale;
@@ -462,7 +462,7 @@ float SceneIntersect( int isShadowRay )
 	if (d < t)
 	{
 		t = d;
-		intersectionPoint = rayOrigin + t * rayDirection;
+		intersectionPoint = rayOrigin + (t * rayDirection);
 		intersectionNormal = normal;
 		intersectionMaterial = boxes[5].material;
 		intersectionUV = calcUnitBoxUV(intersectionPoint, normal, vec3(1,-1,-1)) * boxes[5].uvScale;
@@ -473,7 +473,7 @@ float SceneIntersect( int isShadowRay )
 	if (d < t)
 	{
 		t = d;
-		intersectionPoint = rayOrigin + t * rayDirection;
+		intersectionPoint = rayOrigin + (t * rayDirection);
 		intersectionNormal = normal;
 		intersectionMaterial = boxes[6].material;
 		intersectionUV = calcUnitBoxUV(intersectionPoint, normal, vec3(1,1,1)) * boxes[6].uvScale;
@@ -483,7 +483,7 @@ float SceneIntersect( int isShadowRay )
 	if (d < t)
 	{
 		t = d;
-		intersectionPoint = rayOrigin + t * rayDirection;
+		intersectionPoint = rayOrigin + (t * rayDirection);
 		intersectionNormal = normal;
 		intersectionMaterial = boxes[7].material;
 		intersectionUV = calcUnitBoxUV(intersectionPoint, normal, vec3(-1,1,1)) * boxes[7].uvScale;
@@ -493,7 +493,7 @@ float SceneIntersect( int isShadowRay )
 	if (d < t)
 	{
 		t = d;
-		intersectionPoint = rayOrigin + t * rayDirection;
+		intersectionPoint = rayOrigin + (t * rayDirection);
 		intersectionNormal = normal;
 		intersectionMaterial = boxes[8].material;
 		intersectionUV = calcUnitBoxUV(intersectionPoint, normal, vec3(1,-1,1)) * boxes[8].uvScale;
@@ -503,7 +503,7 @@ float SceneIntersect( int isShadowRay )
 	if (d < t)
 	{
 		t = d;
-		intersectionPoint = rayOrigin + t * rayDirection;
+		intersectionPoint = rayOrigin + (t * rayDirection);
 		intersectionNormal = normal;
 		intersectionMaterial = boxes[9].material;
 		intersectionUV = calcUnitBoxUV(intersectionPoint, normal, vec3(1,1,-1)) * boxes[9].uvScale;
@@ -513,7 +513,7 @@ float SceneIntersect( int isShadowRay )
 	if (d < t)
 	{
 		t = d;
-		intersectionPoint = rayOrigin + t * rayDirection;
+		intersectionPoint = rayOrigin + (t * rayDirection);
 		intersectionNormal = normal;
 		intersectionMaterial = boxes[10].material;
 		intersectionUV = calcUnitBoxUV(intersectionPoint, normal, vec3(-1,-1,1)) * boxes[10].uvScale;
@@ -523,7 +523,7 @@ float SceneIntersect( int isShadowRay )
 	if (d < t)
 	{
 		t = d;
-		intersectionPoint = rayOrigin + t * rayDirection;
+		intersectionPoint = rayOrigin + (t * rayDirection);
 		intersectionNormal = normal;
 		intersectionMaterial = boxes[11].material;
 		intersectionUV = calcUnitBoxUV(intersectionPoint, normal, vec3(1,-1,-1)) * boxes[11].uvScale;
@@ -537,7 +537,6 @@ float SceneIntersect( int isShadowRay )
 	if (d < t)
 	{
 		t = d;
-		//intersectionPoint = rayOrigin + t * rayDirection;
 		intersectionNormal = normal;
 		intersectionMaterial = cylinders[1].material;
 		intersectionShapeIsClosed = FALSE;
@@ -546,7 +545,6 @@ float SceneIntersect( int isShadowRay )
 	if (d < t)
 	{
 		t = d;
-		//intersectionPoint = rayOrigin + t * rayDirection;
 		intersectionNormal = normal;
 		intersectionMaterial = cylinders[2].material;
 		intersectionShapeIsClosed = FALSE;
@@ -556,7 +554,6 @@ float SceneIntersect( int isShadowRay )
 	if (d < t)
 	{
 		t = d;
-		//intersectionPoint = rayOrigin + t * rayDirection;
 		intersectionNormal = normal;
 		intersectionMaterial = cylinders[4].material;
 		intersectionShapeIsClosed = FALSE;
@@ -565,7 +562,6 @@ float SceneIntersect( int isShadowRay )
 	if (d < t)
 	{
 		t = d;
-		//intersectionPoint = rayOrigin + t * rayDirection;
 		intersectionNormal = normal;
 		intersectionMaterial = cylinders[5].material;
 		intersectionShapeIsClosed = FALSE;
@@ -575,7 +571,6 @@ float SceneIntersect( int isShadowRay )
 	if (d < t)
 	{
 		t = d;
-		//intersectionPoint = rayOrigin + t * rayDirection;
 		intersectionNormal = normal;
 		intersectionMaterial = cylinders[7].material;
 		intersectionShapeIsClosed = FALSE;
@@ -584,7 +579,6 @@ float SceneIntersect( int isShadowRay )
 	if (d < t)
 	{
 		t = d;
-		//intersectionPoint = rayOrigin + t * rayDirection;
 		intersectionNormal = normal;
 		intersectionMaterial = cylinders[8].material;
 		intersectionShapeIsClosed = FALSE;
@@ -594,7 +588,6 @@ float SceneIntersect( int isShadowRay )
 	if (d < t)
 	{
 		t = d;
-		//intersectionPoint = rayOrigin + t * rayDirection;
 		intersectionNormal = normal;
 		intersectionMaterial = cylinders[10].material;
 		intersectionShapeIsClosed = FALSE;
@@ -603,7 +596,6 @@ float SceneIntersect( int isShadowRay )
 	if (d < t)
 	{
 		t = d;
-		//intersectionPoint = rayOrigin + t * rayDirection;
 		intersectionNormal = normal;
 		intersectionMaterial = cylinders[11].material;
 		intersectionShapeIsClosed = FALSE;
@@ -613,7 +605,6 @@ float SceneIntersect( int isShadowRay )
 	if (d < t)
 	{
 		t = d;
-		//intersectionPoint = rayOrigin + t * rayDirection;
 		intersectionNormal = normal;
 		intersectionMaterial = cylinders[13].material;
 		intersectionShapeIsClosed = FALSE;
@@ -622,7 +613,6 @@ float SceneIntersect( int isShadowRay )
 	if (d < t)
 	{
 		t = d;
-		//intersectionPoint = rayOrigin + t * rayDirection;
 		intersectionNormal = normal;
 		intersectionMaterial = cylinders[14].material;
 		intersectionShapeIsClosed = FALSE;
@@ -632,7 +622,6 @@ float SceneIntersect( int isShadowRay )
 	if (d < t)
 	{
 		t = d;
-		//intersectionPoint = rayOrigin + t * rayDirection;
 		intersectionNormal = normal;
 		intersectionMaterial = cylinders[16].material;
 		intersectionShapeIsClosed = FALSE;
@@ -641,7 +630,6 @@ float SceneIntersect( int isShadowRay )
 	if (d < t)
 	{
 		t = d;
-		//intersectionPoint = rayOrigin + t * rayDirection;
 		intersectionNormal = normal;
 		intersectionMaterial = cylinders[17].material;
 		intersectionShapeIsClosed = FALSE;
@@ -655,15 +643,15 @@ float SceneIntersect( int isShadowRay )
 	{
 		// large base cylinder
 		t = d;
-		intersectionPoint = rayOrigin + d * rayDirection;
+		intersectionPoint = rayOrigin + (d * rayDirection);
 		intersectionNormal = normal;
 		intersectionMaterial = cylinders[0].material;
 		intersectionUV = calcCylinderUV(intersectionPoint, cylinders[0].heightRadius, cylinders[0].position) * cylinders[0].uvScale;
 		intersectionShapeIsClosed = FALSE;
 
-		normalizedVec = (rayOrigin + d * rayDirection) - cylinders[0].position;
+		normalizedVec = intersectionPoint - cylinders[0].position;
 		// must compute theta before normalizing the Vec
-		theta = normalizedVec.y / cylinders[0].heightRadius;
+		theta = normalizedVec.y * (1.0 / cylinders[0].heightRadius);
 		normalizedVec = normalize(normalizedVec);
 		phi = atan(normalizedVec.z, normalizedVec.x);
 
@@ -710,7 +698,7 @@ float SceneIntersect( int isShadowRay )
 		if (d < t)
 		{
 			t = d;
-			intersectionPoint = rayOrigin + t * rayDirection;
+			intersectionPoint = rayOrigin + (t * rayDirection);
 			intersectionNormal = normal;
 			intersectionMaterial = cylinders[0].material;
 			intersectionUV = (calcCylinderUV(intersectionPoint, cylinders[0].heightRadius, cylinders[0].position) + vec2(0.5, 0.0)) * vec2(3, 1);
@@ -725,15 +713,15 @@ float SceneIntersect( int isShadowRay )
 	{
 		// large base cylinder
 		t = d;
-		intersectionPoint = rayOrigin + d * rayDirection;
+		intersectionPoint = rayOrigin + (d * rayDirection);
 		intersectionNormal = normal;
 		intersectionMaterial = cylinders[3].material;
 		intersectionUV = calcCylinderUV(intersectionPoint, cylinders[3].heightRadius, cylinders[3].position) * cylinders[3].uvScale;
 		intersectionShapeIsClosed = FALSE;
 
-		normalizedVec = (rayOrigin + d * rayDirection) - cylinders[3].position;
+		normalizedVec = intersectionPoint - cylinders[3].position;
 		// must compute theta before normalizing the Vec
-		theta = normalizedVec.y / cylinders[3].heightRadius;
+		theta = normalizedVec.y * (1.0 / cylinders[3].heightRadius);
 		normalizedVec = normalize(normalizedVec);
 		phi = atan(normalizedVec.z, normalizedVec.x);
 
@@ -780,7 +768,7 @@ float SceneIntersect( int isShadowRay )
 		if (d < t)
 		{
 			t = d;
-			intersectionPoint = rayOrigin + t * rayDirection;
+			intersectionPoint = rayOrigin + (t * rayDirection);
 			intersectionNormal = normal;
 			intersectionMaterial = cylinders[3].material;
 			intersectionUV = (calcCylinderUV(intersectionPoint, cylinders[3].heightRadius, cylinders[3].position) + vec2(0.5, 0.5)) * vec2(3, -1);
@@ -795,15 +783,15 @@ float SceneIntersect( int isShadowRay )
 	{
 		// large base cylinder
 		t = d;
-		intersectionPoint = rayOrigin + d * rayDirection;
+		intersectionPoint = rayOrigin + (d * rayDirection);
 		intersectionNormal = normal;
 		intersectionMaterial = cylinders[3].material;
 		intersectionUV = calcCylinderUV(intersectionPoint, cylinders[6].heightRadius, cylinders[6].position) * cylinders[6].uvScale;
 		intersectionShapeIsClosed = FALSE;
 
-		normalizedVec = (rayOrigin + d * rayDirection) - cylinders[6].position;
+		normalizedVec = intersectionPoint - cylinders[6].position;
 		// must compute theta before normalizing the Vec
-		theta = normalizedVec.y / cylinders[6].heightRadius;
+		theta = normalizedVec.y * (1.0 / cylinders[6].heightRadius);
 		normalizedVec = normalize(normalizedVec);
 		phi = atan(normalizedVec.z, normalizedVec.x);
 
@@ -850,7 +838,7 @@ float SceneIntersect( int isShadowRay )
 		if (d < t)
 		{
 			t = d;
-			intersectionPoint = rayOrigin + t * rayDirection;
+			intersectionPoint = rayOrigin + (t * rayDirection);
 			intersectionNormal = normal;
 			intersectionMaterial = cylinders[6].material;
 			intersectionUV = (calcCylinderUV(intersectionPoint, cylinders[6].heightRadius, cylinders[6].position) + vec2(-0.5, 0.5)) * vec2(3, 1);
@@ -865,15 +853,15 @@ float SceneIntersect( int isShadowRay )
 	{
 		// large base cylinder
 		t = d;
-		intersectionPoint = rayOrigin + d * rayDirection;
+		intersectionPoint = rayOrigin + (d * rayDirection);
 		intersectionNormal = normal;
 		intersectionMaterial = cylinders[9].material;
 		intersectionUV = calcCylinderUV(intersectionPoint, cylinders[9].heightRadius, cylinders[9].position) * cylinders[9].uvScale;
 		intersectionShapeIsClosed = FALSE;
 
-		normalizedVec = (rayOrigin + d * rayDirection) - cylinders[9].position;
+		normalizedVec = intersectionPoint - cylinders[9].position;
 		// must compute theta before normalizing the Vec
-		theta = normalizedVec.y / cylinders[9].heightRadius;
+		theta = normalizedVec.y * (1.0 / cylinders[9].heightRadius);
 		normalizedVec = normalize(normalizedVec);
 		phi = atan(normalizedVec.z, normalizedVec.x);
 
@@ -920,7 +908,7 @@ float SceneIntersect( int isShadowRay )
 		if (d < t)
 		{
 			t = d;
-			intersectionPoint = rayOrigin + t * rayDirection;
+			intersectionPoint = rayOrigin + (t * rayDirection);
 			intersectionNormal = normal;
 			intersectionMaterial = cylinders[9].material;
 			intersectionUV = (calcCylinderUV(intersectionPoint, cylinders[9].heightRadius, cylinders[9].position) + vec2(-0.5, -0.5)) * vec2(3, 1);
@@ -935,15 +923,15 @@ float SceneIntersect( int isShadowRay )
 	{
 		// large base cylinder
 		t = d;
-		intersectionPoint = rayOrigin + d * rayDirection;
+		intersectionPoint = rayOrigin + (d * rayDirection);
 		intersectionNormal = normal;
 		intersectionMaterial = cylinders[12].material;
 		intersectionUV = calcCylinderUV(intersectionPoint, cylinders[12].heightRadius, cylinders[12].position) * cylinders[12].uvScale;
 		intersectionShapeIsClosed = FALSE;
 
-		normalizedVec = (rayOrigin + d * rayDirection) - cylinders[12].position;
+		normalizedVec = intersectionPoint - cylinders[12].position;
 		// must compute theta before normalizing the Vec
-		theta = normalizedVec.y / cylinders[12].heightRadius;
+		theta = normalizedVec.y * (1.0 / cylinders[12].heightRadius);
 		normalizedVec = normalize(normalizedVec);
 		phi = atan(normalizedVec.z, normalizedVec.x);
 
@@ -990,7 +978,7 @@ float SceneIntersect( int isShadowRay )
 		if (d < t)
 		{
 			t = d;
-			intersectionPoint = rayOrigin + t * rayDirection;
+			intersectionPoint = rayOrigin + (t * rayDirection);
 			intersectionNormal = normal;
 			intersectionMaterial = cylinders[12].material;
 			intersectionUV = (calcCylinderUV(intersectionPoint, cylinders[12].heightRadius, cylinders[12].position) + vec2(-0.5, 0.5)) * vec2(-3, -1);
@@ -1005,15 +993,15 @@ float SceneIntersect( int isShadowRay )
 	{
 		// large base cylinder
 		t = d;
-		intersectionPoint = rayOrigin + d * rayDirection;
+		intersectionPoint = rayOrigin + (d * rayDirection);
 		intersectionNormal = normal;
 		intersectionMaterial = cylinders[15].material;
 		intersectionUV = calcCylinderUV(intersectionPoint, cylinders[15].heightRadius, cylinders[15].position) * cylinders[15].uvScale;
 		intersectionShapeIsClosed = FALSE;
 
-		normalizedVec = (rayOrigin + d * rayDirection) - cylinders[15].position;
+		normalizedVec = intersectionPoint - cylinders[15].position;
 		// must compute theta before normalizing the Vec
-		theta = normalizedVec.y / cylinders[15].heightRadius;
+		theta = normalizedVec.y * (1.0 / cylinders[15].heightRadius);
 		normalizedVec = normalize(normalizedVec);
 		phi = atan(normalizedVec.z, normalizedVec.x);
 		
@@ -1061,7 +1049,7 @@ float SceneIntersect( int isShadowRay )
 		if (d < t)
 		{
 			t = d;
-			intersectionPoint = rayOrigin + t * rayDirection;
+			intersectionPoint = rayOrigin + (t * rayDirection);
 			intersectionNormal = normal;
 			intersectionMaterial = cylinders[15].material;
 			intersectionUV = (calcCylinderUV(intersectionPoint, cylinders[15].heightRadius, cylinders[15].position) + vec2(0.5, 0.5)) * vec2(-3, -1);
@@ -1197,7 +1185,7 @@ vec3 RayTrace()
 		// if it is determined that the shading normal is pointing in the same direction as the ray (or nearly the same), it means the normal is on the wrong side of the surface and we must flip it (negate it)
 		geometryNormal = normalize(intersectionNormal); // geometry normals are the unaltered normals from the intersected shape definition / or from the triangle mesh data
                 shadingNormal = dot(geometryNormal, rayDirection) < 0.0 ? geometryNormal : -geometryNormal; // if geometry normal is pointing in the same manner as ray, must flip the shading normal (negate it) 
-		intersectionPoint = rayOrigin + t * rayDirection; // use the ray equation to find intersection point (P = O + tD)
+		intersectionPoint = rayOrigin + (t * rayDirection); // use the ray equation to find intersection point (P = O + tD)
 		// the directionToLight vector will point from the intersected surface either towards the Sun, or up to the point light position
 		directionToLight = directionToSunlight;
 
@@ -1234,7 +1222,7 @@ vec3 RayTrace()
 			// the Diffuse and Specular lighting may be added. If it fails to find the light source (another object is in the way), the surface is left in shadow with Ambient light only.
 			isShadowRay = TRUE;
 			// first we must nudge shadow ray origin out from the surface (along the surface normal) just a little bit, in order to avoid self-intersection on the next bounces loop iteration
-			rayOrigin = intersectionPoint + uEPS_intersect * shadingNormal;
+			rayOrigin = intersectionPoint + (uEPS_intersect * shadingNormal);
 			rayDirection = directionToLight; // all shadow rays go directly toward the light
 			continue; // continue next with shadow ray towards the light source
                 }
@@ -1258,20 +1246,20 @@ vec3 RayTrace()
 			{
 				willNeedReflectionRay = TRUE; // this flag will let the future code know that it needs to rewind time and trace the saved reflection ray
 				reflectionRayColorMask = rayColorMask * intersectionMaterial.color2;
-				reflectionRayOrigin = intersectionPoint + uEPS_intersect * shadingNormal; // nudge the reflection rayOrigin out from the surface to avoid self-intersection
+				reflectionRayOrigin = intersectionPoint + (uEPS_intersect * shadingNormal); // nudge the reflection rayOrigin out from the surface to avoid self-intersection
 				reflectionRayDirection = reflect(rayDirection, shadingNormal);
 			}
 
 			if (previousIntersectionMaterialType == METAL)
 			{
-				rayOrigin = intersectionPoint + uEPS_intersect * shadingNormal; // nudge the shadow rayOrigin out from the surface to avoid self-intersection
+				rayOrigin = intersectionPoint + (uEPS_intersect * shadingNormal); // nudge the shadow rayOrigin out from the surface to avoid self-intersection
 				rayDirection = reflect(rayDirection, shadingNormal);
 				continue;
 			}
 			// First, send out the usual shadow ray for the diffuse part of this surface. When that's done with its job, the saved reflection ray will take over.  
 			// The reflection ray above will start right back at this same spot on the surface, but will go off on its own mirror reflection trajectory.
 			isShadowRay = TRUE;
-			rayOrigin = intersectionPoint + uEPS_intersect * shadingNormal; // nudge the shadow rayOrigin out from the surface to avoid self-intersection
+			rayOrigin = intersectionPoint + (uEPS_intersect * shadingNormal); // nudge the shadow rayOrigin out from the surface to avoid self-intersection
 			rayDirection = directionToLight; // all shadow rays go directly toward the light
 			continue; // continue next with shadow ray towards the light source
 		}
@@ -1295,13 +1283,13 @@ vec3 RayTrace()
 			{
 				willNeedReflectionRay = TRUE; // this flag will let the future code know that it needs to rewind time and trace the saved reflection ray
 				reflectionRayColorMask = rayColorMask * intersectionMaterial.color2;
-				reflectionRayOrigin = intersectionPoint + uEPS_intersect * shadingNormal; // nudge the reflection rayOrigin out from the surface to avoid self-intersection
+				reflectionRayOrigin = intersectionPoint + (uEPS_intersect * shadingNormal); // nudge the reflection rayOrigin out from the surface to avoid self-intersection
 				reflectionRayDirection = reflect(rayDirection, shadingNormal);
 			}
 			// First, send out the usual shadow ray for the diffuse part of this surface. When that's done with its job, the saved reflection ray will take over.  
 			// The reflection ray above will start right back at this same spot on the surface, but will go off on its own mirror reflection trajectory.
 			isShadowRay = TRUE;
-			rayOrigin = intersectionPoint + uEPS_intersect * shadingNormal; // nudge the shadow rayOrigin out from the surface to avoid self-intersection
+			rayOrigin = intersectionPoint + (uEPS_intersect * shadingNormal); // nudge the shadow rayOrigin out from the surface to avoid self-intersection
 			rayDirection = directionToLight; // all shadow rays go directly toward the light
 			continue; // continue next with shadow ray towards the light source
 		}
