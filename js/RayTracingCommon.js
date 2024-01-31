@@ -532,7 +532,7 @@ float UnitSphereIntersect( vec3 ro, vec3 rd, out vec3 n )
 		return t1;
 	}
 
-	return 0.0;
+	return INFINITY;
 }
 `;
 
@@ -601,7 +601,7 @@ float UnitCylinderIntersect( vec3 ro, vec3 rd, out vec3 n )
 		return t1;
 	}
 
-	return 0.0;
+	return INFINITY;
 }
 `;
 
@@ -700,7 +700,7 @@ float UnitConeIntersect( float apexRadius, vec3 ro, vec3 rd, out vec3 n )
 		return t1;
 	}
 
-	return 0.0;
+	return INFINITY;
 }
 `;
 
@@ -805,7 +805,7 @@ float UnitParaboloidIntersect( vec3 ro, vec3 rd, out vec3 n )
 		return t1;
 	}
 
-	return 0.0;
+	return INFINITY;
 }
 `;
 
@@ -881,7 +881,7 @@ float UnitHyperboloidIntersect( vec3 ro, vec3 rd, float innerRadius, out vec3 n 
 		return t1;
 	}
 
-	return 0.0;
+	return INFINITY;
 }
 `;
 
@@ -913,7 +913,7 @@ float UnitHyperbolicParaboloidIntersect( vec3 ro, vec3 rd, out vec3 n )
 		return t1;
 	}
 
-	return 0.0;
+	return INFINITY;
 }
 `;
 
@@ -1025,7 +1025,7 @@ float UnitBoxIntersect( vec3 ro, vec3 rd )
 	float t1 = min( min(tmax.x, tmax.y), tmax.z);
 
 	if (t0 > t1) // test for invalid intersection
-		return 0.0;
+		return INFINITY;
 
 	if (t0 > 0.0)
 	{
@@ -1038,7 +1038,7 @@ float UnitBoxIntersect( vec3 ro, vec3 rd )
 		return t1;
 	}
 	
-	return 0.0;
+	return INFINITY;
 }
 `;
 
