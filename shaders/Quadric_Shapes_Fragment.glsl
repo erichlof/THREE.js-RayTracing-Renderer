@@ -173,7 +173,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 	rObjOrigin = vec3( uDiffuseSphereInvMatrix * vec4(rayOrigin, 1.0) );
 	rObjDirection = vec3( uDiffuseSphereInvMatrix * vec4(rayDirection, 0.0) );
 	d = UnitSphereIntersect(rObjOrigin, rObjDirection, normal);
-	if (d > 0.0 && d < t)
+	if (d < t)
 	{
 		t = d;
 		intersectionPoint = rObjOrigin + (t * rObjDirection);
@@ -187,7 +187,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 	rObjOrigin = vec3( uMetalSphereInvMatrix * vec4(rayOrigin, 1.0) );
 	rObjDirection = vec3( uMetalSphereInvMatrix * vec4(rayDirection, 0.0) );
 	d = UnitSphereIntersect(rObjOrigin, rObjDirection, normal);
-	if (d > 0.0 && d < t)
+	if (d < t)
 	{
 		t = d;
 		intersectionPoint = rObjOrigin + (t * rObjDirection);
@@ -201,7 +201,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 	rObjOrigin = vec3( uCoatSphereInvMatrix * vec4(rayOrigin, 1.0) );
 	rObjDirection = vec3( uCoatSphereInvMatrix * vec4(rayDirection, 0.0) );
 	d = UnitSphereIntersect(rObjOrigin, rObjDirection, normal);
-	if (d > 0.0 && d < t)
+	if (d < t)
 	{
 		t = d;
 		intersectionPoint = rObjOrigin + (t * rObjDirection);
@@ -215,7 +215,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 	rObjOrigin = vec3( uGlassSphereInvMatrix * vec4(rayOrigin, 1.0) );
 	rObjDirection = vec3( uGlassSphereInvMatrix * vec4(rayDirection, 0.0) );
 	d = UnitSphereIntersect(rObjOrigin, rObjDirection, normal);
-	if (d > 0.0 && d < t)
+	if (d < t)
 	{
 		t = d;
 		intersectionPoint = rObjOrigin + (t * rObjDirection);
@@ -229,7 +229,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 	rObjOrigin = vec3( uCylinderInvMatrix * vec4(rayOrigin, 1.0) );
 	rObjDirection = vec3( uCylinderInvMatrix * vec4(rayDirection, 0.0) );
 	d = UnitCylinderIntersect(rObjOrigin, rObjDirection, normal);
-	if (d > 0.0 && d < t)
+	if (d < t)
 	{
 		t = d;
 		intersectionPoint = rObjOrigin + (t * rObjDirection);
@@ -243,7 +243,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 	rObjOrigin = vec3( uCappedCylinderInvMatrix * vec4(rayOrigin, 1.0) );
 	rObjDirection = vec3( uCappedCylinderInvMatrix * vec4(rayDirection, 0.0) );
 	d = UnitCappedCylinderIntersect(rObjOrigin, rObjDirection, normal);
-	if (d > 0.0 && d < t)
+	if (d < t)
 	{
 		t = d;
 		intersectionPoint = rObjOrigin + (t * rObjDirection);
@@ -263,7 +263,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 	rObjOrigin = vec3( uConeInvMatrix * vec4(rayOrigin, 1.0) );
 	rObjDirection = vec3( uConeInvMatrix * vec4(rayDirection, 0.0) );
 	d = UnitConeIntersect(0.0, rObjOrigin, rObjDirection, normal);
-	if (d > 0.0 && d < t)
+	if (d < t)
 	{
 		t = d;
 		intersectionPoint = rObjOrigin + (t * rObjDirection);
@@ -277,7 +277,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 	rObjOrigin = vec3( uCappedConeInvMatrix * vec4(rayOrigin, 1.0) );
 	rObjDirection = vec3( uCappedConeInvMatrix * vec4(rayDirection, 0.0) );
 	d = UnitCappedConeIntersect(0.5, rObjOrigin, rObjDirection, normal);
-	if (d > 0.0 && d < t)
+	if (d < t)
 	{
 		t = d;
 		intersectionPoint = rObjOrigin + (t * rObjDirection);
@@ -297,7 +297,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 	rObjOrigin = vec3( uParaboloidInvMatrix * vec4(rayOrigin, 1.0) );
 	rObjDirection = vec3( uParaboloidInvMatrix * vec4(rayDirection, 0.0) );
 	d = UnitParaboloidIntersect(rObjOrigin, rObjDirection, normal);
-	if (d > 0.0 && d < t)
+	if (d < t)
 	{
 		t = d;
 		intersectionPoint = rObjOrigin + (t * rObjDirection);
@@ -311,7 +311,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 	rObjOrigin = vec3( uCappedParaboloidInvMatrix * vec4(rayOrigin, 1.0) );
 	rObjDirection = vec3( uCappedParaboloidInvMatrix * vec4(rayDirection, 0.0) );
 	d = UnitCappedParaboloidIntersect(rObjOrigin, rObjDirection, normal);
-	if (d > 0.0 && d < t)
+	if (d < t)
 	{
 		t = d;
 		intersectionPoint = rObjOrigin + (t * rObjDirection);
@@ -331,7 +331,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 	rObjOrigin = vec3( uHyperboloidInvMatrix * vec4(rayOrigin, 1.0) );
 	rObjDirection = vec3( uHyperboloidInvMatrix * vec4(rayDirection, 0.0) );
 	d = UnitHyperboloidIntersect(rObjOrigin, rObjDirection, 0.5, normal);
-	if (d > 0.0 && d < t)
+	if (d < t)
 	{
 		t = d;
 		intersectionPoint = rObjOrigin + (t * rObjDirection);
@@ -345,7 +345,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 	rObjOrigin = vec3( uHyperbolicParaboloidInvMatrix * vec4(rayOrigin, 1.0) );
 	rObjDirection = vec3( uHyperbolicParaboloidInvMatrix * vec4(rayDirection, 0.0) );
 	d = UnitHyperbolicParaboloidIntersect(rObjOrigin, rObjDirection, normal);
-	if (d > 0.0 && d < t)
+	if (d < t)
 	{
 		t = d;
 		intersectionPoint = rObjOrigin + (t * rObjDirection);
@@ -359,7 +359,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 	rObjOrigin = vec3( uCapsuleInvMatrix * vec4(rayOrigin, 1.0) );
 	rObjDirection = vec3( uCapsuleInvMatrix * vec4(rayDirection, 0.0) );
 	d = UnitCapsuleIntersect(1.0, rObjOrigin, rObjDirection, normal);
-	if (d > 0.0 && d < t)
+	if (d < t)
 	{
 		t = d;
 		intersectionPoint = rObjOrigin + (t * rObjDirection);
@@ -374,7 +374,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 	rObjOrigin = vec3( uBoxInvMatrix * vec4(rayOrigin, 1.0) );
 	rObjDirection = vec3( uBoxInvMatrix * vec4(rayDirection, 0.0) );
 	d = UnitBoxIntersect( rObjOrigin, rObjDirection );
-	if (d > 0.0 && d < t)
+	if (d < t)
 	{
 		t = d;
 		intersectionPoint = rObjOrigin + (t * rObjDirection); // intersection in box's object space, vec3(-1,-1,-1) to vec3(+1,+1,+1)
