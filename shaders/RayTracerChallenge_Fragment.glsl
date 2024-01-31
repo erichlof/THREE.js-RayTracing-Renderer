@@ -73,7 +73,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 	rObjOrigin = vec3( uGlassSphereInvMatrix * vec4(rayOrigin, 1.0) );
 	rObjDirection = vec3( uGlassSphereInvMatrix * vec4(rayDirection, 0.0) );
 	d = UnitSphereIntersect(rObjOrigin, rObjDirection, normal);
-	if (d > 0.0 && d < t)
+	if (d < t)
 	{
 		t = d;
 		intersectionPoint = rObjOrigin + (t * rObjDirection);
@@ -88,7 +88,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 	rObjOrigin = vec3( uBoxesInvMatrices[0] * vec4(rayOrigin, 1.0) );
 	rObjDirection = vec3( uBoxesInvMatrices[0] * vec4(rayDirection, 0.0) );
 	d = UnitBoxIntersect( rObjOrigin, rObjDirection );
-	if (d > 0.0 && d < t)
+	if (d < t)
 	{
 		t = d;
 		intersectionPoint = rObjOrigin + (t * rObjDirection); // intersection in box's object space, vec3(-1,-1,-1) to vec3(+1,+1,+1)
@@ -107,7 +107,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 	rObjOrigin = vec3( uBoxesInvMatrices[1] * vec4(rayOrigin, 1.0) );
 	rObjDirection = vec3( uBoxesInvMatrices[1] * vec4(rayDirection, 0.0) );
 	d = UnitBoxIntersect( rObjOrigin, rObjDirection );
-	if (d > 0.0 && d < t)
+	if (d < t)
 	{
 		t = d;
 		intersectionPoint = rObjOrigin + (t * rObjDirection); // intersection in box's object space, vec3(-1,-1,-1) to vec3(+1,+1,+1)
@@ -126,7 +126,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 	rObjOrigin = vec3( uBoxesInvMatrices[2] * vec4(rayOrigin, 1.0) );
 	rObjDirection = vec3( uBoxesInvMatrices[2] * vec4(rayDirection, 0.0) );
 	d = UnitBoxIntersect( rObjOrigin, rObjDirection );
-	if (d > 0.0 && d < t)
+	if (d < t)
 	{
 		t = d;
 		intersectionPoint = rObjOrigin + (t * rObjDirection); // intersection in box's object space, vec3(-1,-1,-1) to vec3(+1,+1,+1)
@@ -145,7 +145,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 	rObjOrigin = vec3( uBoxesInvMatrices[3] * vec4(rayOrigin, 1.0) );
 	rObjDirection = vec3( uBoxesInvMatrices[3] * vec4(rayDirection, 0.0) );
 	d = UnitBoxIntersect( rObjOrigin, rObjDirection );
-	if (d > 0.0 && d < t)
+	if (d < t)
 	{
 		t = d;
 		intersectionPoint = rObjOrigin + (t * rObjDirection); // intersection in box's object space, vec3(-1,-1,-1) to vec3(+1,+1,+1)
@@ -164,7 +164,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 	rObjOrigin = vec3( uBoxesInvMatrices[4] * vec4(rayOrigin, 1.0) );
 	rObjDirection = vec3( uBoxesInvMatrices[4] * vec4(rayDirection, 0.0) );
 	d = UnitBoxIntersect( rObjOrigin, rObjDirection );
-	if (d > 0.0 && d < t)
+	if (d < t)
 	{
 		t = d;
 		intersectionPoint = rObjOrigin + (t * rObjDirection); // intersection in box's object space, vec3(-1,-1,-1) to vec3(+1,+1,+1)
@@ -183,7 +183,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 	rObjOrigin = vec3( uBoxesInvMatrices[5] * vec4(rayOrigin, 1.0) );
 	rObjDirection = vec3( uBoxesInvMatrices[5] * vec4(rayDirection, 0.0) );
 	d = UnitBoxIntersect( rObjOrigin, rObjDirection );
-	if (d > 0.0 && d < t)
+	if (d < t)
 	{
 		t = d;
 		intersectionPoint = rObjOrigin + (t * rObjDirection); // intersection in box's object space, vec3(-1,-1,-1) to vec3(+1,+1,+1)
@@ -202,7 +202,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 	rObjOrigin = vec3( uBoxesInvMatrices[6] * vec4(rayOrigin, 1.0) );
 	rObjDirection = vec3( uBoxesInvMatrices[6] * vec4(rayDirection, 0.0) );
 	d = UnitBoxIntersect( rObjOrigin, rObjDirection );
-	if (d > 0.0 && d < t)
+	if (d < t)
 	{
 		t = d;
 		intersectionPoint = rObjOrigin + (t * rObjDirection); // intersection in box's object space, vec3(-1,-1,-1) to vec3(+1,+1,+1)
@@ -221,7 +221,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 	rObjOrigin = vec3( uBoxesInvMatrices[7] * vec4(rayOrigin, 1.0) );
 	rObjDirection = vec3( uBoxesInvMatrices[7] * vec4(rayDirection, 0.0) );
 	d = UnitBoxIntersect( rObjOrigin, rObjDirection );
-	if (d > 0.0 && d < t)
+	if (d < t)
 	{
 		t = d;
 		intersectionPoint = rObjOrigin + (t * rObjDirection); // intersection in box's object space, vec3(-1,-1,-1) to vec3(+1,+1,+1)
@@ -240,7 +240,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 	rObjOrigin = vec3( uBoxesInvMatrices[8] * vec4(rayOrigin, 1.0) );
 	rObjDirection = vec3( uBoxesInvMatrices[8] * vec4(rayDirection, 0.0) );
 	d = UnitBoxIntersect( rObjOrigin, rObjDirection );
-	if (d > 0.0 && d < t)
+	if (d < t)
 	{
 		t = d;
 		intersectionPoint = rObjOrigin + (t * rObjDirection); // intersection in box's object space, vec3(-1,-1,-1) to vec3(+1,+1,+1)
@@ -259,7 +259,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 	rObjOrigin = vec3( uBoxesInvMatrices[9] * vec4(rayOrigin, 1.0) );
 	rObjDirection = vec3( uBoxesInvMatrices[9] * vec4(rayDirection, 0.0) );
 	d = UnitBoxIntersect( rObjOrigin, rObjDirection );
-	if (d > 0.0 && d < t)
+	if (d < t)
 	{
 		t = d;
 		intersectionPoint = rObjOrigin + (t * rObjDirection); // intersection in box's object space, vec3(-1,-1,-1) to vec3(+1,+1,+1)
@@ -278,7 +278,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 	rObjOrigin = vec3( uBoxesInvMatrices[10] * vec4(rayOrigin, 1.0) );
 	rObjDirection = vec3( uBoxesInvMatrices[10] * vec4(rayDirection, 0.0) );
 	d = UnitBoxIntersect( rObjOrigin, rObjDirection );
-	if (d > 0.0 && d < t)
+	if (d < t)
 	{
 		t = d;
 		intersectionPoint = rObjOrigin + (t * rObjDirection); // intersection in box's object space, vec3(-1,-1,-1) to vec3(+1,+1,+1)
@@ -297,7 +297,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 	rObjOrigin = vec3( uBoxesInvMatrices[11] * vec4(rayOrigin, 1.0) );
 	rObjDirection = vec3( uBoxesInvMatrices[11] * vec4(rayDirection, 0.0) );
 	d = UnitBoxIntersect( rObjOrigin, rObjDirection );
-	if (d > 0.0 && d < t)
+	if (d < t)
 	{
 		t = d;
 		intersectionPoint = rObjOrigin + (t * rObjDirection); // intersection in box's object space, vec3(-1,-1,-1) to vec3(+1,+1,+1)
@@ -316,7 +316,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 	rObjOrigin = vec3( uBoxesInvMatrices[12] * vec4(rayOrigin, 1.0) );
 	rObjDirection = vec3( uBoxesInvMatrices[12] * vec4(rayDirection, 0.0) );
 	d = UnitBoxIntersect( rObjOrigin, rObjDirection );
-	if (d > 0.0 && d < t)
+	if (d < t)
 	{
 		t = d;
 		intersectionPoint = rObjOrigin + (t * rObjDirection); // intersection in box's object space, vec3(-1,-1,-1) to vec3(+1,+1,+1)
@@ -335,7 +335,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 	rObjOrigin = vec3( uBoxesInvMatrices[13] * vec4(rayOrigin, 1.0) );
 	rObjDirection = vec3( uBoxesInvMatrices[13] * vec4(rayDirection, 0.0) );
 	d = UnitBoxIntersect( rObjOrigin, rObjDirection );
-	if (d > 0.0 && d < t)
+	if (d < t)
 	{
 		t = d;
 		intersectionPoint = rObjOrigin + (t * rObjDirection); // intersection in box's object space, vec3(-1,-1,-1) to vec3(+1,+1,+1)
@@ -354,7 +354,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 	rObjOrigin = vec3( uBoxesInvMatrices[14] * vec4(rayOrigin, 1.0) );
 	rObjDirection = vec3( uBoxesInvMatrices[14] * vec4(rayDirection, 0.0) );
 	d = UnitBoxIntersect( rObjOrigin, rObjDirection );
-	if (d > 0.0 && d < t)
+	if (d < t)
 	{
 		t = d;
 		intersectionPoint = rObjOrigin + (t * rObjDirection); // intersection in box's object space, vec3(-1,-1,-1) to vec3(+1,+1,+1)
@@ -373,7 +373,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 	rObjOrigin = vec3( uBoxesInvMatrices[15] * vec4(rayOrigin, 1.0) );
 	rObjDirection = vec3( uBoxesInvMatrices[15] * vec4(rayDirection, 0.0) );
 	d = UnitBoxIntersect( rObjOrigin, rObjDirection );
-	if (d > 0.0 && d < t)
+	if (d < t)
 	{
 		t = d;
 		intersectionPoint = rObjOrigin + (t * rObjDirection); // intersection in box's object space, vec3(-1,-1,-1) to vec3(+1,+1,+1)
@@ -392,7 +392,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 	rObjOrigin = vec3( uBoxesInvMatrices[16] * vec4(rayOrigin, 1.0) );
 	rObjDirection = vec3( uBoxesInvMatrices[16] * vec4(rayDirection, 0.0) );
 	d = UnitBoxIntersect( rObjOrigin, rObjDirection );
-	if (d > 0.0 && d < t)
+	if (d < t)
 	{
 		t = d;
 		intersectionPoint = rObjOrigin + (t * rObjDirection); // intersection in box's object space, vec3(-1,-1,-1) to vec3(+1,+1,+1)
