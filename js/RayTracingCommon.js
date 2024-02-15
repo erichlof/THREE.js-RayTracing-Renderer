@@ -83,15 +83,15 @@ vec3 doAmbientLighting(vec3 rayColorMask, float ambientIntensity, Material surfa
 	return ambientLighting * ambientIntensity;
 }
 
-vec3 doDiffuseDirectLighting(vec3 rayColorMask, vec3 surfaceNormal, vec3 directionToLight, vec3 lightColor, Material surfaceMaterial, out float diffuseFalloff)
+vec3 doDiffuseDirectLighting(vec3 rayColorMask, vec3 surfaceNormal, vec3 directionToLight, vec3 lightColor, Material surfaceMaterial, out float diffuseIntensity)
 {
 	vec3 diffuseLighting = rayColorMask * surfaceMaterial.color * lightColor;
 	// next, do typical Lambertian diffuse lighting (NdotL)
-	diffuseFalloff = max(0.0, dot(surfaceNormal, directionToLight));
-	return diffuseLighting * diffuseFalloff;
+	diffuseIntensity = max(0.0, dot(surfaceNormal, directionToLight));
+	return diffuseLighting * diffuseIntensity;
 }
 
-vec3 doBlinnPhongSpecularLighting(vec3 rayColorMask, vec3 rayDirection, vec3 surfaceNormal, vec3 directionToLight, vec3 lightColor, Material surfaceMaterial)
+vec3 doBlinnPhongSpecularLighting(vec3 rayColorMask, vec3 rayDirection, vec3 surfaceNormal, vec3 directionToLight, vec3 lightColor, Material surfaceMaterial, float diffuseIntensity)
 {
 	// for dielectric materials (non-conductors), specular color is unaffected by surface color
 	// for metal materials (conductors) however, specular color gets tinted by the metal surface color
@@ -99,12 +99,12 @@ vec3 doBlinnPhongSpecularLighting(vec3 rayColorMask, vec3 rayDirection, vec3 sur
 	vec3 specularLighting = rayColorMask; // will either be white for dielectrics (usually vec3(1,1,1)), or tinted by metal color for metallics
 	specularLighting *= clamp(lightColor, 0.0, 4.0);
 	vec3 halfwayVector = normalize(-rayDirection + directionToLight); // this is Blinn's modification to Phong's model
-	float shininessExponent = 8.0 / max(0.001, surfaceMaterial.roughness * surfaceMaterial.roughness); // roughness squared produces smoother transition
-	float specularFalloff = pow(max(0.0, dot(surfaceNormal, halfwayVector)), shininessExponent); // this is a powered cosine with shininess as the exponent
-	specularLighting *= specularFalloff;
-	specularLighting *= (1.0 - surfaceMaterial.roughness); // makes specular highlights fade away as surface roughness increases
-	float cosFalloff = max(0.0, dot(surfaceNormal, directionToLight));
-	return mix(vec3(0), specularLighting, cosFalloff);
+	//float shininessExponent = 2.0 / max(0.001, surfaceMaterial.roughness * surfaceMaterial.roughness); // roughness squared produces smoother transition
+	float shininess = 1.0 - surfaceMaterial.roughness;
+	float shininessExponent = max(1500.0 * shininess * shininess, 1.0);
+	float specularIntensity = pow(max(0.0, dot(surfaceNormal, halfwayVector)), shininessExponent); // this is a powered cosine with shininess as the exponent
+	// makes specular highlights fade away as surface shininess and diffuseInstensity decrease
+	return specularLighting * (specularIntensity * shininess * diffuseIntensity);
 }
 
 float calcFresnelReflectance(vec3 rayDirection, vec3 n, float etai, float etat, out float IoR_ratio)
