@@ -101,8 +101,8 @@ vec3 doBlinnPhongSpecularLighting(vec3 rayColorMask, vec3 rayDirection, vec3 sur
 	vec3 halfwayVector = normalize(-rayDirection + directionToLight); // this is Blinn's modification to Phong's model
 	//float shininessExponent = 2.0 / max(0.001, surfaceMaterial.roughness * surfaceMaterial.roughness); // roughness squared produces smoother transition
 	float shininess = 1.0 - surfaceMaterial.roughness;
-	float shininessExponent = max(1500.0 * shininess * shininess, 1.0);
-	float specularIntensity = pow(max(0.0, dot(surfaceNormal, halfwayVector)), shininessExponent); // this is a powered cosine with shininess as the exponent
+	float shininessExponent = max(2000.0 * shininess * shininess * shininess, 1.0);
+	float specularIntensity = pow(max(0.0, dot(surfaceNormal, halfwayVector)), round(shininessExponent)); // this is a powered cosine with shininess as the exponent
 	// makes specular highlights fade away as surface shininess and diffuseInstensity decrease
 	return specularLighting * (specularIntensity * shininess * diffuseIntensity);
 }
