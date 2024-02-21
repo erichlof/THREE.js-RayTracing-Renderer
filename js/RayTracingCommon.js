@@ -79,32 +79,30 @@ float tentFilter(float x) // input: x: a random float(0.0 to 1.0), output: a fil
 
 vec3 doAmbientLighting(vec3 rayColorMask, float ambientIntensity, Material surfaceMaterial)
 {
-	vec3 ambientLighting = rayColorMask * surfaceMaterial.color;
-	return ambientLighting * ambientIntensity;
+	vec3 ambientColor = rayColorMask * surfaceMaterial.color;
+	return ambientColor * ambientIntensity;
 }
 
 vec3 doDiffuseDirectLighting(vec3 rayColorMask, vec3 surfaceNormal, vec3 directionToLight, vec3 lightColor, Material surfaceMaterial, out float diffuseIntensity)
 {
-	vec3 diffuseLighting = rayColorMask * surfaceMaterial.color * lightColor;
+	vec3 diffuseColor = rayColorMask * surfaceMaterial.color * lightColor;
 	// next, do typical Lambertian diffuse lighting (NdotL)
 	diffuseIntensity = max(0.0, dot(surfaceNormal, directionToLight));
-	return diffuseLighting * diffuseIntensity;
+	return diffuseColor * diffuseIntensity;
 }
 
-vec3 doBlinnPhongSpecularLighting(vec3 rayColorMask, vec3 rayDirection, vec3 surfaceNormal, vec3 directionToLight, vec3 lightColor, Material surfaceMaterial, float diffuseIntensity)
+vec3 doBlinnPhongSpecularLighting(vec3 rayColorMask, vec3 surfaceNormal, vec3 halfwayVector, vec3 lightColor, Material surfaceMaterial, float diffuseIntensity)
 {
 	// for dielectric materials (non-conductors), specular color is unaffected by surface color
 	// for metal materials (conductors) however, specular color gets tinted by the metal surface color
 	// therefore, in the metal case, 'rayColorMask' will get pre-tinted before it is passed into this function
-	vec3 specularLighting = rayColorMask; // will either be white for dielectrics (usually vec3(1,1,1)), or tinted by metal color for metallics
-	specularLighting *= clamp(lightColor, 0.0, 4.0);
-	vec3 halfwayVector = normalize(-rayDirection + directionToLight); // this is Blinn's modification to Phong's model
-	//float shininessExponent = 2.0 / max(0.001, surfaceMaterial.roughness * surfaceMaterial.roughness); // roughness squared produces smoother transition
+	vec3 specularColor = rayColorMask; // will either be white for dielectrics (usually vec3(1,1,1)), or tinted by metal color for metallics
+	specularColor *= clamp(lightColor, 0.0, 4.0);
 	float shininess = 1.0 - surfaceMaterial.roughness;
 	float shininessExponent = max(2000.0 * shininess * shininess * shininess, 1.0);
 	float specularIntensity = pow(max(0.0, dot(surfaceNormal, halfwayVector)), round(shininessExponent)); // this is a powered cosine with shininess as the exponent
 	// makes specular highlights fade away as surface shininess and diffuseInstensity decrease
-	return specularLighting * (specularIntensity * shininess * diffuseIntensity);
+	return specularColor * (specularIntensity * shininess * diffuseIntensity);
 }
 
 float calcFresnelReflectance(vec3 rayDirection, vec3 n, float etai, float etat, out float IoR_ratio)
