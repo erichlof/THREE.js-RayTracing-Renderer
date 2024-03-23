@@ -336,16 +336,17 @@ vec3 RayTrace()
 			accumulatedColor += specularContribution;
 
 			// now spawn a reflection ray to see the parts of the scene that are visible in the mirror-like reflection
-			rayColorMask *= clamp(1.0 - (intersectionMaterial.roughness * 1.2), 0.001, 1.0); // inverse relationship: as roughness increases, reflection brightness decreases
+			rayColorMask *= (1.0 - intersectionMaterial.roughness); // inverse relationship: as roughness increases, reflection brightness decreases
 			rayOrigin = intersectionPoint + (uEPS_intersect * shadingNormal); // nudge the new rayOrigin out from the surface to avoid self-intersection
 			rayDirection = reflect(rayDirection, shadingNormal);
+			rayDirection = randomDirectionInSpecularLobe(rayDirection, intersectionMaterial.roughness * intersectionMaterial.roughness);
 			continue; // continue ray tracing next with the mirror-reflection ray
 		}
 
 		if (intersectionMaterial.type == CLEARCOAT)
 		{
 			// the following will decrease the IndexOfRefracton, or IoR(shininess) of the clear coating as the roughness increases 
-			intersectionMaterial.IoR = mix(1.0, intersectionMaterial.IoR, clamp(1.0 - (intersectionMaterial.roughness * 1.2), 0.001, 1.0)); // as roughness increases, the IndexOfRefraction(shininess/brightness) decreases
+			intersectionMaterial.IoR = mix(1.0, intersectionMaterial.IoR, 1.0 - intersectionMaterial.roughness); // as roughness increases, the IndexOfRefraction(shininess/brightness) decreases
 			// reflectance (range: 0-1), given by the Fresnel equations, will tell us what fraction of the light is reflected(reflectance), vs. what fraction is refracted(transmittance)
 			reflectance = calcFresnelReflectance(rayDirection, shadingNormal, 1.0, intersectionMaterial.IoR, IoR_ratio); // the fraction of light that is reflected,
 			transmittance = 1.0 - reflectance; // and the fraction of light that is transmitted
@@ -365,9 +366,10 @@ vec3 RayTrace()
 			if (bounces == 0 || (bounces == 1 && previousIntersectionMaterialType == METAL))
 			{
 				willNeedReflectionRay = TRUE; // this flag will let the future code know that it needs to rewind time and trace the saved reflection ray
-				reflectionRayColorMask = rayColorMask * reflectance * clamp(1.0 - (intersectionMaterial.roughness * 1.2), 0.001, 1.0); // weight reflected ray with reflectance value we got
+				reflectionRayColorMask = rayColorMask * reflectance * (1.0 - intersectionMaterial.roughness); // weight reflected ray with reflectance value we got
 				reflectionRayOrigin = intersectionPoint + (uEPS_intersect * shadingNormal); // nudge the reflection rayOrigin out from the surface to avoid self-intersection
 				reflectionRayDirection = reflect(rayDirection, shadingNormal);
+				reflectionRayDirection = randomDirectionInSpecularLobe(reflectionRayDirection, intersectionMaterial.roughness);
 			}
 			// First, send out the usual shadow ray for the diffuse part of this surface. When that's done with its job, the saved reflection ray will take over.  
 			// The reflection ray above will start right back at this same spot on the surface, but will go off on its own mirror reflection trajectory.
@@ -405,16 +407,17 @@ vec3 RayTrace()
 			if (bounces == 0 || (bounces == 1 && previousIntersectionMaterialType == METAL))
 			{
 				willNeedReflectionRay = TRUE;
-				reflectionRayColorMask = rayColorMask * reflectance * clamp(1.0 - (intersectionMaterial.roughness * 1.2), 0.001, 1.0);
+				reflectionRayColorMask = rayColorMask * reflectance * (1.0 - intersectionMaterial.roughness);
 				reflectionRayOrigin = intersectionPoint + (uEPS_intersect * shadingNormal); // nudge the reflection rayOrigin out from the surface to avoid self-intersection
 				reflectionRayDirection = reflect(rayDirection, shadingNormal);
+				reflectionRayDirection = randomDirectionInSpecularLobe(reflectionRayDirection, intersectionMaterial.roughness);
 			}
 			if (reflectance == 1.0 && isShadowRay == FALSE) // total internal reflection occured - all light is mirror reflection only, because refraction/transmittance is physically impossible for this viewing angle
 			{
-				rayColorMask = rayColorMask * reflectance * clamp(1.0 - (intersectionMaterial.roughness * 1.2), 0.001, 1.0); // weight reflected ray with reflectance value we got
+				rayColorMask = rayColorMask * reflectance * (1.0 - intersectionMaterial.roughness); // weight reflected ray with reflectance value we got
 				rayOrigin = intersectionPoint + (uEPS_intersect * shadingNormal); // nudge the reflection rayOrigin out from the surface to avoid self-intersection
 				rayDirection = reflect(rayDirection, shadingNormal);
-
+				rayDirection = randomDirectionInSpecularLobe(rayDirection, intersectionMaterial.roughness);
 				willNeedReflectionRay = FALSE;
 				continue; // abandon transmitted ray(below) and go ahead and trace reflection ray now
 			}
@@ -433,19 +436,20 @@ vec3 RayTrace()
 			}
 			// the refraction through the surface only accounts for the portion of light that is transmitted, so we must weight it accordingly (Reflectance vs. Transmittance)
 			rayColorMask *= transmittance;
-			rayColorMask *= clamp(1.0 - (intersectionMaterial.roughness * 1.2), 0.001, 1.0); // inverse relationship: as roughness increases, refraction(transmission) brightness decreases
+			rayColorMask *= (1.0 - intersectionMaterial.roughness); // inverse relationship: as roughness increases, refraction(transmission) brightness decreases
 
 			if (isShadowRay == FALSE) // do usual refraction - this is the case most often
 			{
 				// note the minus(-) sign below, which nudges the rayOrigin below the surface along the normal, instead of above it (like for the usual bounced reflections) 
 				rayOrigin = intersectionPoint - (uEPS_intersect * shadingNormal); // nudge transmitted rayOrigin below the surface to avoid self-intersection
 				rayDirection = refract(rayDirection, shadingNormal, IoR_ratio); // ray is now refracted through the material, according to Snell's Law
+				rayDirection = randomDirectionInSpecularLobe(rayDirection, intersectionMaterial.roughness * intersectionMaterial.roughness * intersectionMaterial.roughness);
 			}
 			else // special case: shadow rays are allowed to penetrate transparent surfaces un-refracted, in order to generate 'shadow' caustics (a clever technique found in the Hall Lighting Model)
 			{
 				diffuseContribution *= intersectionMaterial.color; // color future-generated caustics with the transparent material color
 				diffuseContribution *= max(0.2, transmittance); // the light that generates the caustics only accounts for the transmitted portion, so weight it accordingly
-				diffuseContribution *= clamp(1.0 - (intersectionMaterial.roughness * 1.2), 0.001, 1.0); // inverse relationship: as roughness increases, caustics brightness decreases
+				diffuseContribution *= (1.0 - intersectionMaterial.roughness); // inverse relationship: as roughness increases, caustics brightness decreases
 				rayOrigin = intersectionPoint + (uEPS_intersect * rayDirection); // nudge the caustics rayOrigin through the surface along the same rayDirection to avoid self-intersection
 				rayDirection = rayDirection; // ray direction is unchanged - the caustics ray is allowed to pass through (un-refracted)
 			}
