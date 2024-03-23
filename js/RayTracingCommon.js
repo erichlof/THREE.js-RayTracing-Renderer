@@ -71,6 +71,15 @@ float rng()
 	return float(n) * ONE_OVER_MAX_INT;// (1.0 / float(0xffffffffU));
 }
 
+vec3 randomDirectionInSpecularLobe(vec3 reflectionDir, float roughness)
+{
+	float z = (rng() * 2.0) - 1.0;
+	float phi = rng() * TWO_PI;
+	float r = sqrt(1.0 - (z * z));
+    	vec3 cosDiffuseDir = normalize(reflectionDir + vec3(r * cos(phi), r * sin(phi), z));
+	return normalize( mix(reflectionDir, cosDiffuseDir, roughness * roughness) );
+}
+
 // tentFilter from Peter Shirley's 'Realistic Ray Tracing (2nd Edition)' book, pg. 60
 float tentFilter(float x) // input: x: a random float(0.0 to 1.0), output: a filtered float (-1.0 to +1.0)
 {
