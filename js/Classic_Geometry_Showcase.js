@@ -4,6 +4,8 @@ let imageTexturesTotalCount = 1;
 let numOfImageTexturesLoaded = 0;
 let material_RoughnessObject, material_RoughnessController;
 let needChangeMaterialRoughness = false;
+let material_MetalnessObject, material_MetalnessController;
+let needChangeMaterialMetalness = false;
 
 // called automatically from within initTHREEjs() function (located in InitCommon.js file)
 function initSceneData() 
@@ -36,21 +38,29 @@ function initSceneData()
 
 	// In addition to the default GUI on all demos, add any special GUI elements that this particular demo requires
 	material_RoughnessObject = { Material_Roughness: 0.0 };
+	material_MetalnessObject = { GoldSphere_Metalness: 1.0 };
 
 	function handleMaterialRoughnessChange() 
 	{ 
 		needChangeMaterialRoughness = true; 
 	}
+	function handleMaterialMetalnessChange() 
+	{ 
+		needChangeMaterialMetalness = true; 
+	}
 
 	material_RoughnessController = gui.add(material_RoughnessObject, 'Material_Roughness', 0.0, 1.0, 0.01).onChange(handleMaterialRoughnessChange);
+	material_MetalnessController = gui.add(material_MetalnessObject, 'GoldSphere_Metalness', 0.0, 1.0, 0.01).onChange(handleMaterialMetalnessChange);
 
 	// jumpstart some of the gui controller-change handlers so that the pathtracing fragment shader uniforms are correct and up-to-date
 	handleMaterialRoughnessChange();
+	handleMaterialMetalnessChange();
 
 
 	// scene/demo-specific uniforms go here     
 	rayTracingUniforms.uUVGridTexture = { value: UVGridTexture };
 	rayTracingUniforms.uRoughness = { value: 0.0 };
+	rayTracingUniforms.uMetalness = { value: 1.0 };
 
 } // end function initSceneData()
 
@@ -65,6 +75,13 @@ function updateVariablesAndUniforms()
 		rayTracingUniforms.uRoughness.value = material_RoughnessController.getValue();
 		cameraIsMoving = true;
 		needChangeMaterialRoughness = false;
+	}
+
+	if (needChangeMaterialMetalness) 
+	{
+		rayTracingUniforms.uMetalness.value = material_MetalnessController.getValue();
+		cameraIsMoving = true;
+		needChangeMaterialMetalness = false;
 	}
 
 	// INFO
