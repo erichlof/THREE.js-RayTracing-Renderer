@@ -6,6 +6,7 @@ precision highp sampler2D;
 
 uniform sampler2D uUVGridTexture;
 uniform float uRoughness;
+uniform float uMetalness;
 
 #define N_BOXES 1
 #define N_SPHERES 5
@@ -509,7 +510,7 @@ void SetupScene(void)
 	Material blueMaterial = Material(CLEARCOAT, FALSE, vec3(0.01, 0.01, 1.0), vec3(0.0, 0.0, 0.0), 0.0, uRoughness, 1.4, -1);
 	Material redMaterial = Material(PHONG, FALSE, vec3(1.0, 0.01, 0.01), vec3(0.0, 0.0, 0.0), 0.0, uRoughness, 0.0, -1);
 	Material groundUVGridMaterial = Material(CLEARCOAT, FALSE, vec3(1.0, 1.0, 1.0), vec3(0.0, 0.0, 0.0), 0.0, 0.0, 1.3, 0);
-	Material metalMaterial = Material(METAL, FALSE, vec3(1.000, 0.766, 0.336), vec3(0.0, 0.0, 0.0), 1.0, uRoughness, 0.0, -1);
+	Material metalMaterial = Material(METAL, FALSE, vec3(1.000, 0.766, 0.336), vec3(0.0, 0.0, 0.0), uMetalness, uRoughness, 0.0, -1);
 	Material glassMaterial = Material(TRANSPARENT, FALSE, vec3(0.4, 1.0, 0.6), vec3(0.0, 0.0, 0.0), 0.0, uRoughness, 1.5, -1);
 	Material grayBlackCheckerMaterial = Material(CLEARCOAT, TRUE, vec3(0.8, 0.8, 0.8), vec3(0.002, 0.002, 0.002), 0.0, 0.0, 1.4, -1);
 
