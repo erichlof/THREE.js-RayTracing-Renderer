@@ -86,30 +86,30 @@ float tentFilter(float x) // input: x: a random float(0.0 to 1.0), output: a fil
 	return (x < 0.5) ? sqrt(x * 2.0) - 1.0 : 1.0 - sqrt(2.0 - (x * 2.0));
 }
 
-vec3 doAmbientLighting(vec3 rayColorMask, float ambientIntensity, Material surfaceMaterial)
+vec3 doAmbientLighting(vec3 rayColorMask, float ambientIntensity, vec3 materialColor)
 {
-	vec3 ambientColor = rayColorMask * surfaceMaterial.color;
+	vec3 ambientColor = rayColorMask * materialColor;
 	return ambientColor * ambientIntensity;
 }
 
-vec3 doDiffuseDirectLighting(vec3 rayColorMask, vec3 surfaceNormal, vec3 directionToLight, vec3 lightColor, Material surfaceMaterial, out float diffuseIntensity)
+vec3 doDiffuseDirectLighting(vec3 rayColorMask, vec3 surfaceNormal, vec3 directionToLight, vec3 lightColor, vec3 materialColor, out float diffuseIntensity)
 {
-	vec3 diffuseColor = rayColorMask * surfaceMaterial.color * lightColor;
+	vec3 diffuseColor = rayColorMask * materialColor * lightColor;
 	// next, do typical Lambertian diffuse lighting (NdotL)
 	diffuseIntensity = max(0.0, dot(surfaceNormal, directionToLight));
 	return diffuseColor * diffuseIntensity;
 }
 
-vec3 doBlinnPhongSpecularLighting(vec3 rayColorMask, vec3 surfaceNormal, vec3 halfwayVector, vec3 lightColor, Material surfaceMaterial, float diffuseIntensity)
+vec3 doBlinnPhongSpecularLighting(vec3 rayColorMask, vec3 surfaceNormal, vec3 halfwayVector, vec3 lightColor, float materialRoughness, float diffuseIntensity)
 {
 	// for dielectric materials (non-conductors), specular color is unaffected by surface color
 	// for metal materials (conductors) however, specular color gets tinted by the metal surface color
 	// therefore, in the metal case, 'rayColorMask' will get pre-tinted before it is passed into this function
 	vec3 specularColor = rayColorMask; // will either be white for dielectrics (usually vec3(1,1,1)), or tinted by metal color for metallics
 	specularColor *= clamp(lightColor, 0.0, 4.0);
-	float shininess = 1.0 - surfaceMaterial.roughness;
-	float shininessExponent = max(2000.0 * shininess * shininess * shininess, 1.0);
-	float specularIntensity = pow(max(0.0, dot(surfaceNormal, halfwayVector)), round(shininessExponent)); // this is a powered cosine with shininess as the exponent
+	float shininess = 1.0 - materialRoughness;
+	float shininessExponent = max(2000.0 * shininess * shininess * shininess, 5.0);
+	float specularIntensity = pow(max(0.0, dot(surfaceNormal, halfwayVector)), shininessExponent); // this is a powered cosine with shininess as the exponent
 	// makes specular highlights fade away as surface shininess and diffuseInstensity decrease
 	return specularColor * (specularIntensity * shininess * diffuseIntensity);
 }
