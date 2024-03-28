@@ -13,7 +13,7 @@ uniform mat4 uOctahedronInvMatrix;
 uniform mat4 uDodecahedronInvMatrix;
 uniform mat4 uIcosahedronInvMatrix;
 uniform mat4 uTeapotInvMatrix;
-uniform vec3 uMaterialType;
+uniform vec3 uMaterialColor;
 
 //float InvTextureWidth = 0.000244140625; // (1 / 4096 texture width)
 //float InvTextureWidth = 0.00048828125;  // (1 / 2048 texture width)
@@ -33,7 +33,7 @@ vec2 intersectionUV;
 int intersectionTextureID;
 int intersectionShapeIsClosed;
 
-struct Material { int type; int isCheckered; vec3 color; vec3 color2; float roughness; float IoR; int textureID; };
+struct Material { int type; int isCheckered; vec3 color; vec3 color2; float metalness; float roughness; float IoR; int textureID; };
 struct Rectangle { vec3 position; vec3 normal; vec3 vectorU; vec3 vectorV; float radiusU; float radiusV; vec2 uvScale; Material material; };
 struct Box { vec3 minCorner; vec3 maxCorner; vec2 uvScale; Material material; };
 struct Cylinder { float widthRadius; float heightRadius; vec3 position; vec2 uvScale; Material material; };
@@ -90,7 +90,7 @@ float SceneIntersect( int isShadowRay )
 //---------------------------------------------------------------------------------------
 {
 	
-	Material diffuseMetalMaterial = Material(METAL, FALSE, uMaterialType * 0.42, vec3(1.000, 0.766, 0.336), 0.0, 0.0, -1);
+	Material diffuseMetalMaterial = Material(METAL, FALSE, uMaterialColor * 0.42, vec3(1.000, 0.766, 0.336), 1.0, 0.0, 0.0, -1);
 
 	vec4 currentBoxNodeData0, nodeAData0, nodeBData0, tmpNodeData0;
 	vec4 currentBoxNodeData1, nodeAData1, nodeBData1, tmpNodeData1;
@@ -1200,24 +1200,24 @@ vec3 RayTrace()
 			intersectionMaterial.color *= (textureColor * 0.7); // now that the texture color is in linear space, we can do simple math with it, like multiplying and adding
 		}
 
-		if (intersectionMaterial.isCheckered == TRUE)
-		{
-			intersectionMaterial.color = mod(floor(intersectionUV.x) + floor(intersectionUV.y), 2.0) == 0.0 ? intersectionMaterial.color : intersectionMaterial.color2;
-		}
+		// if (intersectionMaterial.isCheckered == TRUE)
+		// {
+		// 	intersectionMaterial.color = mod(floor(intersectionUV.x) + floor(intersectionUV.y), 2.0) == 0.0 ? intersectionMaterial.color : intersectionMaterial.color2;
+		// }
 		
                 if (intersectionMaterial.type == PHONG)
                 {
 			// Phong's original lighting model consists of 3 components - Ambient, Diffuse, and Specular contributions.
 			// Ambient is an old 'hack' to cheaply simulate the effect of soft, diffuse bounce lighting (Global Illumination)
-			ambientContribution = doAmbientLighting(rayColorMask, ambientIntensity, intersectionMaterial);
+			ambientContribution = doAmbientLighting(rayColorMask, ambientIntensity, intersectionMaterial.color);
 			accumulatedColor += ambientContribution; // on diffuse surfaces (including Phong materials), ambient is always present no matter what, so go ahead and add it to the final accumColor now
 
 			// Diffuse is the typical Lambertian lighting (NdotL) that arrives directly from the light source - this gives non-metallic surfaces their color & gradient shading
-			diffuseContribution = doDiffuseDirectLighting(rayColorMask, shadingNormal, directionToLight, lightColor, intersectionMaterial, diffuseIntensity);
+			diffuseContribution = doDiffuseDirectLighting(rayColorMask, shadingNormal, directionToLight, lightColor, intersectionMaterial.color, diffuseIntensity);
 			//diffuseContribution /= sceneUsesDirectionalLight == TRUE ? 1.0 : max(1.0, 0.5 * distance(spheres[0].position, intersectionPoint));
 			
 			// Specular is the bright highlight on shiny surfaces, resulting from a direct reflection of the light source itself
-			specularContribution = doBlinnPhongSpecularLighting(rayColorMask, shadingNormal, halfwayVector, lightColor, intersectionMaterial, diffuseIntensity);
+			specularContribution = doBlinnPhongSpecularLighting(rayColorMask, shadingNormal, halfwayVector, lightColor, intersectionMaterial.roughness, diffuseIntensity);
 			// when all 3 components (Ambient, Diffuse, and Specular) have been calculated, they are just simply added up to give the final lighting.
 			// Since Ambient lighting (global) is always present no matter what, it was immediately added a couple lines above.
 			// However, in order to add the Diffuse and Specular lighting contributions, we must be able to 'see' the light source from the surface's perspective.
@@ -1234,13 +1234,13 @@ vec3 RayTrace()
 		{
 			rayColorMask *= intersectionMaterial.color;
 
-			ambientContribution = doAmbientLighting(rayColorMask, ambientIntensity, intersectionMaterial);
+			ambientContribution = doAmbientLighting(rayColorMask, ambientIntensity, intersectionMaterial.color);
 			accumulatedColor += ambientContribution; // on diffuse surfaces (dusty metal), ambient is always present no matter what, so go ahead and add it to the final accumColor now
 
-			diffuseContribution = doDiffuseDirectLighting(rayColorMask, shadingNormal, directionToLight, lightColor, intersectionMaterial, diffuseIntensity);
+			diffuseContribution = doDiffuseDirectLighting(rayColorMask, shadingNormal, directionToLight, lightColor, intersectionMaterial.color, diffuseIntensity);
 			//diffuseContribution /= sceneUsesDirectionalLight == TRUE ? 1.0 : max(1.0, 0.5 * distance(spheres[0].position, intersectionPoint));
 			
-			specularContribution = doBlinnPhongSpecularLighting(rayColorMask, shadingNormal, halfwayVector, lightColor, intersectionMaterial, diffuseIntensity);
+			specularContribution = doBlinnPhongSpecularLighting(rayColorMask, shadingNormal, halfwayVector, lightColor, intersectionMaterial.roughness, diffuseIntensity);
 
 			// If this Metal type of material is either the first thing that the camera ray encounters (bounces == 0), or the 2nd thing the ray encounters after reflecting from METAL (bounces == 1),
 			// then setup and save a reflection ray for later use. After we've done that, first we'll send out the usual shadow ray to see if the Diffuse and Specular contributions can be added. Then once the shadow ray 
@@ -1271,13 +1271,13 @@ vec3 RayTrace()
 
 		if (intersectionMaterial.type == DIFFUSE_METAL)
 		{	
-			ambientContribution = doAmbientLighting(rayColorMask, ambientIntensity, intersectionMaterial);
+			ambientContribution = doAmbientLighting(rayColorMask, ambientIntensity, intersectionMaterial.color);
 			accumulatedColor += ambientContribution; // on diffuse surfaces (dusty metal), ambient is always present no matter what, so go ahead and add it to the final accumColor now
 
-			diffuseContribution = doDiffuseDirectLighting(rayColorMask, shadingNormal, directionToLight, lightColor, intersectionMaterial, diffuseIntensity);
+			diffuseContribution = doDiffuseDirectLighting(rayColorMask, shadingNormal, directionToLight, lightColor, intersectionMaterial.color, diffuseIntensity);
 			//diffuseContribution /= sceneUsesDirectionalLight == TRUE ? 1.0 : max(1.0, 0.5 * distance(spheres[0].position, intersectionPoint));
 			
-			specularContribution = doBlinnPhongSpecularLighting(rayColorMask, shadingNormal, halfwayVector, lightColor, intersectionMaterial, diffuseIntensity);
+			specularContribution = doBlinnPhongSpecularLighting(rayColorMask, shadingNormal, halfwayVector, lightColor, intersectionMaterial.roughness, diffuseIntensity);
 
 			// If this DiffuseMetal type of material is either the first thing that the camera ray encounters (bounces == 0), or the 2nd thing the ray encounters after reflecting from METAL (bounces == 1),
 			// then setup and save a reflection ray for later use. After we've done that, first we'll send out the usual shadow ray to see if the Diffuse and Specular contributions can be added. Then once the shadow ray 
@@ -1366,8 +1366,8 @@ void SetupScene(void)
 	// rgb values for common metals
 	// Gold: (1.000, 0.766, 0.336) / Aluminum: (0.913, 0.921, 0.925) / Copper: (0.955, 0.637, 0.538) / Silver: (0.972, 0.960, 0.915)
 	
-	Material marbleMaterial = Material(PHONG, FALSE, vec3(0.3), vec3(0.0, 0.0, 0.0), 1.0, 0.0, 0);
-	Material blueDiffuseMetalMaterial = Material(DIFFUSE_METAL, FALSE, vec3(0.0, 0.01, 0.035), vec3(0.0, 0.2, 1.0), 0.0, 0.0, -1);
+	Material marbleMaterial = Material(PHONG, FALSE, vec3(0.3), vec3(0.0, 0.0, 0.0), 0.0, 1.0, 0.0, 0);
+	Material blueDiffuseMetalMaterial = Material(DIFFUSE_METAL, FALSE, vec3(0.0, 0.01, 0.035), vec3(0.0, 0.2, 1.0), 1.0, 0.0, 0.0, -1);
 
 
 	rectangles[0] = Rectangle(vec3(0, 0, 0), vec3(0,1,0), vec3(1,0,0), vec3(0,0,1), 100.0, 25.0, vec2(300, 300), blueDiffuseMetalMaterial);
