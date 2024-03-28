@@ -433,7 +433,7 @@ function initSceneData()
 	rayTracingUniforms.uTriangleTexture = { value: triangleDataTexture };
 	rayTracingUniforms.uAABBTexture = { value: aabbDataTexture };   
 	rayTracingUniforms.uMarbleTexture = { value: marbleTexture };
-	rayTracingUniforms.uMaterialType = { value: new THREE.Vector3() };
+	rayTracingUniforms.uMaterialColor = { value: new THREE.Color() };
 	rayTracingUniforms.uTetrahedronInvMatrix = { value: new THREE.Matrix4() };
 	rayTracingUniforms.uCubeInvMatrix = { value: new THREE.Matrix4() };
 	rayTracingUniforms.uOctahedronInvMatrix = { value: new THREE.Matrix4() };
@@ -463,19 +463,19 @@ function updateVariablesAndUniforms()
 	// Gold: (1.000, 0.766, 0.336) / Aluminum: (0.913, 0.921, 0.925) / Copper: (0.955, 0.637, 0.538) / Silver: (0.972, 0.960, 0.915)
 		if (matType == 'Aluminum') 
 		{ // more of a 'blue-steel' in an attempt to match the original raytraced source image of this demo
-			rayTracingUniforms.uMaterialType.value.set(0.9, 0.95, 1.0);
+			rayTracingUniforms.uMaterialColor.value.setRGB(0.9, 0.95, 1.0);
 		}
 		else if (matType == 'Gold') 
 		{
-			rayTracingUniforms.uMaterialType.value.set(1.000, 0.766, 0.336);	
+			rayTracingUniforms.uMaterialColor.value.setRGB(1.000, 0.766, 0.336);	
 		}
 		else if (matType == 'Copper') 
 		{
-			rayTracingUniforms.uMaterialType.value.set(0.955, 0.637, 0.538);	
+			rayTracingUniforms.uMaterialColor.value.setRGB(0.955, 0.637, 0.538);	
 		}
 		else if (matType == 'Silver') 
 		{
-			rayTracingUniforms.uMaterialType.value.set(0.972, 0.960, 0.915);
+			rayTracingUniforms.uMaterialColor.value.setRGB(0.972, 0.960, 0.915);
 		}
 			
 		cameraIsMoving = true;
