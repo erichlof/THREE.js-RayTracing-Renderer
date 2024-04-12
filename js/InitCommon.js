@@ -58,7 +58,6 @@ let oldPinchWidthX = 0;
 let oldPinchWidthY = 0;
 let pinchDeltaX = 0;
 let pinchDeltaY = 0;
-let fontAspect;
 let useGenericInput = true;
 let EPS_intersect = 0.01;
 let textureLoader = new THREE.TextureLoader();
@@ -285,11 +284,6 @@ function onWindowResize(event)
 
 	renderer.setPixelRatio(pixelRatio);
 	renderer.setSize(SCREEN_WIDTH, SCREEN_HEIGHT);
-
-	fontAspect = (SCREEN_WIDTH / 175) * (SCREEN_HEIGHT / 200);
-	if (fontAspect > 25) fontAspect = 25;
-	if (fontAspect < 4) fontAspect = 4;
-	fontAspect *= 2;
 
 	rayTracingUniforms.uResolution.value.x = context.drawingBufferWidth;
 	rayTracingUniforms.uResolution.value.y = context.drawingBufferHeight;
