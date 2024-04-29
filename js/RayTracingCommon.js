@@ -33,7 +33,7 @@ in vec2 vUv;
 #define SPOT_LIGHT -2
 #define POINT_LIGHT -1
 #define DIRECTIONAL_LIGHT 0
-#define PHONG 1
+#define DIFFUSE 1
 #define METAL 2
 #define CLEARCOAT 3
 #define TRANSPARENT 4
@@ -86,17 +86,15 @@ float tentFilter(float x) // input: x: a random float(0.0 to 1.0), output: a fil
 	return (x < 0.5) ? sqrt(x * 2.0) - 1.0 : 1.0 - sqrt(2.0 - (x * 2.0));
 }
 
-vec3 doAmbientLighting(vec3 rayColorMask, float ambientIntensity, vec3 materialColor)
+vec3 doAmbientLighting(vec3 rayColorMask, vec3 materialColor, float ambientIntensity)
 {
 	vec3 ambientColor = rayColorMask * materialColor;
 	return ambientColor * ambientIntensity;
 }
 
-vec3 doDiffuseDirectLighting(vec3 rayColorMask, vec3 surfaceNormal, vec3 directionToLight, vec3 lightColor, vec3 materialColor, out float diffuseIntensity)
+vec3 doDiffuseDirectLighting(vec3 rayColorMask, vec3 materialColor, vec3 lightColor, float diffuseIntensity)
 {
 	vec3 diffuseColor = rayColorMask * materialColor * lightColor;
-	// next, do typical Lambertian diffuse lighting (NdotL)
-	diffuseIntensity = max(0.0, dot(surfaceNormal, directionToLight));
 	return diffuseColor * diffuseIntensity;
 }
 
@@ -110,33 +108,58 @@ vec3 doBlinnPhongSpecularLighting(vec3 rayColorMask, vec3 surfaceNormal, vec3 ha
 	float shininess = 1.0 - materialRoughness;
 	float shininessExponent = max(2000.0 * shininess * shininess * shininess, 5.0);
 	float specularIntensity = pow(max(0.0, dot(surfaceNormal, halfwayVector)), shininessExponent); // this is a powered cosine with shininess as the exponent
-	// makes specular highlights fade away as surface shininess and diffuseInstensity decrease
+	// makes specular highlights fade away as surface shininess and diffuseIntensity decrease
 	return specularColor * (specularIntensity * shininess * diffuseIntensity);
 }
 
-float calcFresnelReflectance(vec3 rayDirection, vec3 n, float etai, float etat, out float IoR_ratio)
+vec3 doWardAnisotropicSpecularLighting(vec3 rayDirection, vec3 rayColorMask, vec3 surfaceNormal, vec3 halfwayVector, vec3 lightColor, float alphaX, float alphaY, float diffuseIntensity)
 {
-	float temp = etai;
-	float cosi = clamp(dot(rayDirection, n), -1.0, 1.0);
-	if (cosi > 0.0)
-	{
-		etai = etat;
-		etat = temp;
-	}
+	// for dielectric materials (non-conductors), specular color is unaffected by surface color
+	// for metal materials (conductors) however, specular color gets tinted by the metal surface color
+	// therefore, in the metal case, 'rayColorMask' will get pre-tinted before it is passed into this function
+	vec3 specularColor = rayColorMask; // will either be white for dielectrics (usually vec3(1,1,1)), or tinted by metal color for metallics
+	specularColor *= clamp(lightColor, 0.0, 4.0);
 	
-	IoR_ratio = etai / etat;
-	float sint2 = IoR_ratio * IoR_ratio * (1.0 - (cosi * cosi));
-	if (sint2 >= 1.0) 
-		return 1.0; // total internal reflection
-	float cost = sqrt(1.0 - sint2);
-	cosi = abs(cosi);
-	float etatxcosi = etat * cosi;
-	float etaixcost = etai * cost;
-	float etaixcosi = etai * cosi;
-	float etatxcost = etat * cost;
-	float Rs = (etatxcosi - etaixcost) / (etatxcosi + etaixcost);
-	float Rp = (etaixcosi - etatxcost) / (etaixcosi + etatxcost);
-	return clamp( 0.5 * ((Rs * Rs) + (Rp * Rp)), 0.0, 1.0 );
+	vec3 T = normalize(cross(vec3(0, 0.9938837346736189, 0.11043152607484655), surfaceNormal));
+	vec3 B = cross(surfaceNormal, T);
+	float TdotH = dot(T, halfwayVector);
+	float BdotH = dot(B, halfwayVector);
+	float NdotH = dot(surfaceNormal, halfwayVector);
+	float NdotL = diffuseIntensity;
+    	float NdotV = max(0.0, dot(surfaceNormal, -rayDirection));
+	
+	float roughnessX = TdotH / max(0.001, alphaX);
+	float roughnessY = BdotH / max(0.001, alphaY);
+	float beta = -2.0 * ((roughnessX * roughnessX) + (roughnessY * roughnessY)) / (1.0 + NdotH);
+	float denom = max(1.0, 4.0 * PI * alphaX * alphaY * sqrt(NdotL * NdotV));
+	float specularIntensity = (1.0 / denom) * exp(beta);
+
+	return specularColor * (specularIntensity * diffuseIntensity);
+}
+
+float calcFresnelReflectance(vec3 rayDirection, vec3 n, float etaI, float etaT, out float IoR_ratio)
+{
+	float cosThetaI = clamp(dot(-rayDirection, n), -1.0, 1.0);
+	float temp = etaI;
+	if (cosThetaI < 0.0)
+	{	
+		etaI = etaT;
+		etaT = temp;
+	}
+	IoR_ratio = etaI / etaT;
+	cosThetaI = abs(cosThetaI);
+	float sin2ThetaT = (IoR_ratio * IoR_ratio) * (1.0 - (cosThetaI * cosThetaI));
+	if (sin2ThetaT >= 1.0) // handle total internal reflection
+		return 1.0; 
+	float cosThetaT = sqrt(1.0 - sin2ThetaT);
+
+	float etaT_x_cosThetaI = etaT * cosThetaI;
+	float etaI_x_cosThetaT = etaI * cosThetaT;
+	float etaI_x_cosThetaI = etaI * cosThetaI;
+	float etaT_x_cosThetaT = etaT * cosThetaT;
+	float Rparl = (etaT_x_cosThetaI - etaI_x_cosThetaT) / (etaT_x_cosThetaI + etaI_x_cosThetaT);
+    	float Rperp = (etaI_x_cosThetaI - etaT_x_cosThetaT) / (etaI_x_cosThetaI + etaT_x_cosThetaT);
+    	return clamp(0.5 * ((Rparl * Rparl) + (Rperp * Rperp)), 0.0, 1.0);
 }
 
 vec2 calcSphereUV(vec3 pointOnSphere, float sphereRadius, vec3 spherePosition)
@@ -181,7 +204,7 @@ vec2 calcUnitCylinderUV(vec3 pointOnUnitCylinder)
 }
 
 vec2 calcUnitBoxUV(vec3 pointOnUnitBox, vec3 normal, vec3 boxScale)
-{ // this is a simple tri-planar mapping: if the box normal points to the right or left, use z and x as uv coordinates.
+{ // this is a simple tri-planar mapping: if the box normal points to the right or left, use z and y as uv coordinates.
 // If normal points up or down, use x and z as uv coordinates. If normal points forward and backward, use x and y as uv coordinates.
 	     if (normal.z > 0.0)
 		return (vec2( pointOnUnitBox.x, -pointOnUnitBox.y) * 0.5 + 0.5) * vec2(boxScale.x, boxScale.y);
@@ -3085,9 +3108,9 @@ vec3 Get_Sky_Color(vec3 rayDir)
 	vec3 Lin = pow( sunE * ( ( betaRTheta + betaMTheta ) / ( rayleighAtX + mieAtX ) ) * ( 1.0 - Fex ), vec3( 1.5 ) );
 	Lin *= mix( vec3( 1.0 ), pow( sunE * ( ( betaRTheta + betaMTheta ) / ( rayleighAtX + mieAtX ) ) * Fex, vec3( 0.5 ) ), clamp( pow( 1.0 - cosSunUpAngle, 5.0 ), 0.0, 1.0 ) );
 	// nightsky
-	float theta = acos( viewDirection.y ); // elevation --> y-axis, [-pi/2, pi/2]
-	float phi = atan( viewDirection.z, viewDirection.x ); // azimuth --> x-axis [-pi/2, pi/2]
-	vec2 uv = vec2( phi, theta ) / vec2( 2.0 * PI, PI ) + vec2( 0.5, 0.0 );
+	//float theta = acos( viewDirection.y ); // elevation --> y-axis, [-pi/2, pi/2]
+	//float phi = atan( viewDirection.z, viewDirection.x ); // azimuth --> x-axis [-pi/2, pi/2]
+	//vec2 uv = vec2( phi, theta ) / vec2( 2.0 * PI, PI ) + vec2( 0.5, 0.0 );
 	vec3 L0 = vec3( 0.1 ) * Fex;
 	// composition + solar disc
 	float sundisk = smoothstep( SUN_ANGULAR_DIAMETER_COS, SUN_ANGULAR_DIAMETER_COS + 0.00002, cosViewSunAngle );
