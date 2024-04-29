@@ -570,13 +570,14 @@ vec3 RayTrace()
 		// the directionToLight vector will point from the intersected surface either towards the Sun, or up to the point light position
 		directionToLight = (sceneUsesDirectionalLight == TRUE) ? directionToLight : normalize(pointLightPosition - intersectionPoint);
 		halfwayVector = normalize(-rayDirection + directionToLight); // this is Blinn's modification to Phong's model
+		diffuseIntensity = max(0.0, dot(shadingNormal, directionToLight)); // this is used for typical Lambert diffuse (or 'NdotL') lighting
 
 		if (intersectionMaterial.isCheckered == TRUE)
 		{
 			intersectionMaterial.color = mod(floor(intersectionUV.x) + floor(intersectionUV.y), 2.0) == 0.0 ? intersectionMaterial.color : intersectionMaterial.color2;
 		}
 		
-		// No PHONG Materials are used in this demo
+		// No DIFFUSE Materials are used in this demo
 
 		// No METAL Materials are used in this demo
 
@@ -588,10 +589,10 @@ vec3 RayTrace()
 			reflectance = calcFresnelReflectance(rayDirection, shadingNormal, 1.0, intersectionMaterial.IoR, IoR_ratio); // the fraction of light that is reflected,
 			transmittance = 1.0 - reflectance; // and the fraction of light that is transmitted
 
-			ambientContribution = doAmbientLighting(rayColorMask, ambientIntensity, intersectionMaterial.color);
+			ambientContribution = doAmbientLighting(rayColorMask, intersectionMaterial.color, ambientIntensity);
 			accumulatedColor += ambientContribution; // on diffuse surfaces (underneath the clearcoat), ambient is always present no matter what, so go ahead and add it to the final accumColor now
 			
-			diffuseContribution = doDiffuseDirectLighting(rayColorMask, shadingNormal, directionToLight, lightColor, intersectionMaterial.color, diffuseIntensity);
+			diffuseContribution = doDiffuseDirectLighting(rayColorMask, intersectionMaterial.color, lightColor, diffuseIntensity);
 			//diffuseContribution /= sceneUsesDirectionalLight == TRUE ? 1.0 : max(1.0, 0.5 * distance(pointLightPosition, intersectionPoint));
 			diffuseContribution *= max(0.1, transmittance); // the diffuse reflections from the surface are transmitted through the ClearCoat material, so we must weight them accordingly
 			
@@ -630,7 +631,7 @@ vec3 RayTrace()
 				halfwayVector = (-rayDirection - (intersectionMaterial.IoR * directionToLight)) / (intersectionMaterial.IoR - 1.0);
 				halfwayVector = normalize(halfwayVector);
 			} */	
-			specularContribution = doBlinnPhongSpecularLighting(rayColorMask, shadingNormal, halfwayVector, lightColor, intersectionMaterial.roughness, 1.0);
+			specularContribution = doBlinnPhongSpecularLighting(rayColorMask, shadingNormal, halfwayVector, lightColor, intersectionMaterial.roughness, diffuseIntensity);
 			// shadow rays are only test rays and must not contribute any lighting of their own.
 			// So if the current ray is a shadow ray (isShadowRay == TRUE), then we shut off the specular highlights.
 			specularContribution = (isShadowRay == TRUE) ? vec3(0) : specularContribution;
