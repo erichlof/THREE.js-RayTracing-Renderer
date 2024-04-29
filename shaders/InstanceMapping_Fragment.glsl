@@ -709,6 +709,7 @@ vec3 RayTrace()
 		// the directionToLight vector will point from the intersected surface either towards the Sun, or up to the point light position
 		directionToLight = (sceneUsesDirectionalLight == TRUE) ? directionToLight : normalize(pointLightPosition - intersectionPoint);
 		halfwayVector = normalize(-rayDirection + directionToLight); // this is Blinn's modification to Phong's model
+		diffuseIntensity = max(0.0, dot(shadingNormal, directionToLight)); // this is used for typical Lambert diffuse (or 'NdotL') lighting
 
 		// if the intersection material has a valid texture ID (> -1), go ahead and sample the texture at the hit material's UV coordinates
 		if (intersectionMaterial.textureID > -1)
@@ -723,15 +724,15 @@ vec3 RayTrace()
 			intersectionMaterial.color = mod(floor(intersectionUV.x) + floor(intersectionUV.y), 2.0) == 0.0 ? intersectionMaterial.color : intersectionMaterial.color2;
 		}
 		
-                if (intersectionMaterial.type == PHONG)
+                if (intersectionMaterial.type == DIFFUSE)
                 {
 			// Phong's original lighting model consists of 3 components - Ambient, Diffuse, and Specular contributions.
 			// Ambient is an old 'hack' to cheaply simulate the effect of soft, diffuse bounce lighting (Global Illumination)
-			ambientContribution = doAmbientLighting(rayColorMask, ambientIntensity, intersectionMaterial.color);
+			ambientContribution = doAmbientLighting(rayColorMask, intersectionMaterial.color, ambientIntensity);
 			accumulatedColor += ambientContribution; // on diffuse surfaces (including Phong materials), ambient is always present no matter what, so go ahead and add it to the final accumColor now
 
 			// Diffuse is the typical Lambertian lighting (NdotL) that arrives directly from the light source - this gives non-metallic surfaces their color & gradient shading
-			diffuseContribution = doDiffuseDirectLighting(rayColorMask, shadingNormal, directionToLight, lightColor, intersectionMaterial.color, diffuseIntensity);
+			diffuseContribution = doDiffuseDirectLighting(rayColorMask, intersectionMaterial.color, lightColor, diffuseIntensity);
 			diffuseContribution /= sceneUsesDirectionalLight == TRUE ? 1.0 : max(1.0, 0.5 * distance(spheres[0].position, intersectionPoint));
 			
 			// Specular is the bright highlight on shiny surfaces, resulting from a direct reflection of the light source itself
@@ -753,11 +754,11 @@ vec3 RayTrace()
 			// tint ray color with metal color
 			rayColorMask *= intersectionMaterial.color;
 
-			// Metals are purely specular with no diffuse component.
+			// Metals in this demo are purely specular with no diffuse component.
 			// Therefore, the Ambient (global bounced diffuse) and Diffuse (direct diffuse from light source) contributions are skipped.
 			// ambientContribution = NA
 			// diffuseContribution = NA
-			specularContribution = doBlinnPhongSpecularLighting(rayColorMask, shadingNormal, halfwayVector, lightColor, intersectionMaterial.roughness, 1.0);
+			specularContribution = doBlinnPhongSpecularLighting(rayColorMask, shadingNormal, halfwayVector, lightColor, intersectionMaterial.roughness, diffuseIntensity);
 			// we could technically do a shadow ray test (to see if the light is visible), but in the interest of speed, we go ahead and add the Specular contribution.
 			accumulatedColor += specularContribution;
 
@@ -777,10 +778,10 @@ vec3 RayTrace()
 			reflectance = calcFresnelReflectance(rayDirection, shadingNormal, 1.0, intersectionMaterial.IoR, IoR_ratio); // the fraction of light that is reflected,
 			transmittance = 1.0 - reflectance; // and the fraction of light that is transmitted
 
-			ambientContribution = doAmbientLighting(rayColorMask, ambientIntensity, intersectionMaterial.color);
+			ambientContribution = doAmbientLighting(rayColorMask, intersectionMaterial.color, ambientIntensity);
 			accumulatedColor += ambientContribution; // on diffuse surfaces (underneath the clearcoat), ambient is always present no matter what, so go ahead and add it to the final accumColor now
 
-			diffuseContribution = doDiffuseDirectLighting(rayColorMask, shadingNormal, directionToLight, lightColor, intersectionMaterial.color, diffuseIntensity);
+			diffuseContribution = doDiffuseDirectLighting(rayColorMask, intersectionMaterial.color, lightColor, diffuseIntensity);
 			diffuseContribution /= sceneUsesDirectionalLight == TRUE ? 1.0 : max(1.0, 0.5 * distance(spheres[0].position, intersectionPoint));
 			diffuseContribution *= max(0.1, transmittance); // the diffuse reflections from the surface are transmitted through the ClearCoat material, so we must weight them accordingly
 			
@@ -819,7 +820,7 @@ vec3 RayTrace()
 				halfwayVector = (-rayDirection - (intersectionMaterial.IoR * directionToLight)) / (intersectionMaterial.IoR - 1.0);
 				halfwayVector = normalize(halfwayVector);
 			} */
-			specularContribution = doBlinnPhongSpecularLighting(rayColorMask, shadingNormal, halfwayVector, lightColor, intersectionMaterial.roughness, 1.0);
+			specularContribution = doBlinnPhongSpecularLighting(rayColorMask, shadingNormal, halfwayVector, lightColor, intersectionMaterial.roughness, diffuseIntensity);
 			// shadow rays are only test rays and must not contribute any lighting of their own.
 			// So if the current ray is a shadow ray (isShadowRay == TRUE), then we shut off the specular highlights.
 			specularContribution = (isShadowRay == TRUE) ? vec3(0) : specularContribution;
@@ -909,8 +910,8 @@ void SetupScene(void)
 	float pointLightPower = 10.0;
 	Material pointLightMaterial = Material(POINT_LIGHT, FALSE, vec3(1.0, 1.0, 1.0) * pointLightPower, vec3(0.0, 0.0, 0.0), 0.0, 0.0, 0.0, -1 );
 	Material blueMaterial = Material(CLEARCOAT, FALSE, vec3(0.01, 0.01, 1.0), vec3(0.0, 0.0, 0.0), 0.0, 0.0, 1.4, -1);
-	Material redMaterial = Material(PHONG, FALSE, vec3(1.0, 0.01, 0.01), vec3(0.0, 0.0, 0.0), 0.0, 1.0, 0.0, -1);
-	Material diffuseUVGridMaterial = Material(PHONG, FALSE, vec3(1.0, 1.0, 1.0), vec3(0.0, 0.0, 0.0), 0.0, 1.0, 0.0, 0);
+	Material redMaterial = Material(DIFFUSE, FALSE, vec3(1.0, 0.01, 0.01), vec3(0.0, 0.0, 0.0), 0.0, 1.0, 0.0, -1);
+	Material diffuseUVGridMaterial = Material(DIFFUSE, FALSE, vec3(1.0, 1.0, 1.0), vec3(0.0, 0.0, 0.0), 0.0, 1.0, 0.0, 0);
 	Material metalMaterial = Material(METAL, FALSE, vec3(0.972, 0.960, 0.915), vec3(0.0, 0.0, 0.0), 1.0, 0.0, 0.0, -1);
 	Material glassMaterial = Material(TRANSPARENT, FALSE, vec3(0.4, 1.0, 0.6), vec3(0.0, 0.0, 0.0), 0.0, 0.0, 1.5, -1);
 	Material grayBlackCheckerMaterial = Material(CLEARCOAT, TRUE, vec3(0.8, 0.8, 0.8), vec3(0.002, 0.002, 0.002), 0.0, 0.0, 1.4, -1);
@@ -918,7 +919,7 @@ void SetupScene(void)
 	
 	// start with default metal material for this demo
 	Material guiMaterial = metalMaterial;
-	if (uMaterialType == PHONG)
+	if (uMaterialType == DIFFUSE)
 		guiMaterial = redMaterial;
 	else if (uMaterialType == CLEARCOAT)
 		guiMaterial = blueMaterial;
