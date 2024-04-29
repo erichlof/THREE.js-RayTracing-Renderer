@@ -1191,6 +1191,7 @@ vec3 RayTrace()
 		// the directionToLight vector will point from the intersected surface either towards the Sun, or up to the point light position
 		directionToLight = (sceneUsesDirectionalLight == TRUE) ? directionToLight : normalize(pointLightPosition - intersectionPoint);
 		halfwayVector = normalize(-rayDirection + directionToLight); // this is Blinn's modification to Phong's model
+		diffuseIntensity = max(0.0, dot(shadingNormal, directionToLight)); // this is used for typical Lambert diffuse (or 'NdotL') lighting
 
 		// if the intersection material has a valid texture ID (> -1), go ahead and sample the texture at the hit material's UV coordinates
 		if (intersectionMaterial.textureID > -1)
@@ -1205,15 +1206,15 @@ vec3 RayTrace()
 		// 	intersectionMaterial.color = mod(floor(intersectionUV.x) + floor(intersectionUV.y), 2.0) == 0.0 ? intersectionMaterial.color : intersectionMaterial.color2;
 		// }
 		
-                if (intersectionMaterial.type == PHONG)
+                if (intersectionMaterial.type == DIFFUSE)
                 {
 			// Phong's original lighting model consists of 3 components - Ambient, Diffuse, and Specular contributions.
 			// Ambient is an old 'hack' to cheaply simulate the effect of soft, diffuse bounce lighting (Global Illumination)
-			ambientContribution = doAmbientLighting(rayColorMask, ambientIntensity, intersectionMaterial.color);
+			ambientContribution = doAmbientLighting(rayColorMask, intersectionMaterial.color, ambientIntensity);
 			accumulatedColor += ambientContribution; // on diffuse surfaces (including Phong materials), ambient is always present no matter what, so go ahead and add it to the final accumColor now
 
 			// Diffuse is the typical Lambertian lighting (NdotL) that arrives directly from the light source - this gives non-metallic surfaces their color & gradient shading
-			diffuseContribution = doDiffuseDirectLighting(rayColorMask, shadingNormal, directionToLight, lightColor, intersectionMaterial.color, diffuseIntensity);
+			diffuseContribution = doDiffuseDirectLighting(rayColorMask, intersectionMaterial.color, lightColor, diffuseIntensity);
 			//diffuseContribution /= sceneUsesDirectionalLight == TRUE ? 1.0 : max(1.0, 0.5 * distance(spheres[0].position, intersectionPoint));
 			
 			// Specular is the bright highlight on shiny surfaces, resulting from a direct reflection of the light source itself
@@ -1234,10 +1235,10 @@ vec3 RayTrace()
 		{
 			rayColorMask *= intersectionMaterial.color;
 
-			ambientContribution = doAmbientLighting(rayColorMask, ambientIntensity, intersectionMaterial.color);
+			ambientContribution = doAmbientLighting(rayColorMask, intersectionMaterial.color, ambientIntensity);
 			accumulatedColor += ambientContribution; // on diffuse surfaces (dusty metal), ambient is always present no matter what, so go ahead and add it to the final accumColor now
 
-			diffuseContribution = doDiffuseDirectLighting(rayColorMask, shadingNormal, directionToLight, lightColor, intersectionMaterial.color, diffuseIntensity);
+			diffuseContribution = doDiffuseDirectLighting(rayColorMask, intersectionMaterial.color, lightColor, diffuseIntensity);
 			//diffuseContribution /= sceneUsesDirectionalLight == TRUE ? 1.0 : max(1.0, 0.5 * distance(spheres[0].position, intersectionPoint));
 			
 			specularContribution = doBlinnPhongSpecularLighting(rayColorMask, shadingNormal, halfwayVector, lightColor, intersectionMaterial.roughness, diffuseIntensity);
@@ -1271,10 +1272,10 @@ vec3 RayTrace()
 
 		if (intersectionMaterial.type == DIFFUSE_METAL)
 		{	
-			ambientContribution = doAmbientLighting(rayColorMask, ambientIntensity, intersectionMaterial.color);
+			ambientContribution = doAmbientLighting(rayColorMask, intersectionMaterial.color, ambientIntensity);
 			accumulatedColor += ambientContribution; // on diffuse surfaces (dusty metal), ambient is always present no matter what, so go ahead and add it to the final accumColor now
 
-			diffuseContribution = doDiffuseDirectLighting(rayColorMask, shadingNormal, directionToLight, lightColor, intersectionMaterial.color, diffuseIntensity);
+			diffuseContribution = doDiffuseDirectLighting(rayColorMask, intersectionMaterial.color, lightColor, diffuseIntensity);
 			//diffuseContribution /= sceneUsesDirectionalLight == TRUE ? 1.0 : max(1.0, 0.5 * distance(spheres[0].position, intersectionPoint));
 			
 			specularContribution = doBlinnPhongSpecularLighting(rayColorMask, shadingNormal, halfwayVector, lightColor, intersectionMaterial.roughness, diffuseIntensity);
@@ -1366,7 +1367,7 @@ void SetupScene(void)
 	// rgb values for common metals
 	// Gold: (1.000, 0.766, 0.336) / Aluminum: (0.913, 0.921, 0.925) / Copper: (0.955, 0.637, 0.538) / Silver: (0.972, 0.960, 0.915)
 	
-	Material marbleMaterial = Material(PHONG, FALSE, vec3(0.3), vec3(0.0, 0.0, 0.0), 0.0, 1.0, 0.0, 0);
+	Material marbleMaterial = Material(DIFFUSE, FALSE, vec3(0.3), vec3(0.0, 0.0, 0.0), 0.0, 1.0, 0.0, 0);
 	Material blueDiffuseMetalMaterial = Material(DIFFUSE_METAL, FALSE, vec3(0.0, 0.01, 0.035), vec3(0.0, 0.2, 1.0), 1.0, 0.0, 0.0, -1);
 
 
