@@ -30,6 +30,21 @@ The above image is the cover of the classic book, An Introduction To Ray Tracing
 
 * [The 6 Platonic Solids demo](https://erichlof.github.io/THREE.js-RayTracing-Renderer/The_6_Platonic_Solids.html) This demo features two techniques that I have recently developed: Convex Polyhedra raycasting and Instance Mapping.  The 5 Platonic solids (minus the 'Teapotahedron', lol) featured in the demo are efficiently rendered with a plane-cutting technique first developed by Eric Haines (one of the authors of this book!) back in 1991.  This algorithm allows you to raycast a convex faceted shape consisting of 4 to 20 planes.  The 'Teapotaheadron' is rendered with the traditional triangular model and BVH acceleration system.  The other technique, Instance Mapping, is used on the 6 marble pillars.  This algorithm for efficiently raycasting multiple small instances located on and around a large parent shape produces the dozens of smaller cylinder columns around each large pillar.  Without these two techniques, we would have no hope of running this complex classic scene at real time frame rates, let alone on mobile devices!  Enjoy! ;-) <br>
 <br>
+<br>
+<br>
+
+![Whitted_1979](https://github.com/erichlof/THREE.js-RayTracing-Renderer/assets/3434843/a9d7e29c-900c-4b29-80bd-756fd6a850c4)
+
+While working at Bell Labs in the late 1970's and writing his now-famous paper [An Improved Illumination Model for Shaded Display](http://artis.imag.fr/Members/David.Roger/whitted.pdf), J. Turner Whitted developed a brand new technique of recursive ray tracing (a.k.a. 'Whitted-style' ray tracing).  Following the laws of optics such as The Law of Reflection, Snell's Refraction Law, and Lambert's Cosine Law (for diffuse lighting), Whitted was able to create a handful of iconic images containing checkered planes and spheres that featured photo-realistic reflections, refractions, and pixel-perfect shadows. The level of realism he was able to achieve with his new recursive raytracing technique shocked the entire CG community - no one had ever seen this level of realism in computer-generated images before!  Whitted quickly became famous in the computer world after he included these ray-traced images in his paper (which would later be published in June 1980).  Then for an upcoming SIGGRAPH conference submission, Whitted decided to create an animated sequence of individual ray-traced images.  Thus the first ever ray-traced animation was born!     
+
+[Vintage 1979 Video: 'The Compleat Angler' by J. Turner Whitted](https://youtu.be/0KrCh5qD9Ho)
+
+Although this movie appears as a smooth animation, it took around 45 minutes to render each individual frame back in 1979!  Fast-forward to today and using WebGL 2.0 and the parallel processing power of GPUs, here is the same iconic scene rendered at 60 times a second in your browser! : <br>
+* [Whitted Recursive RayTracing demo](https://erichlof.github.io/THREE.js-RayTracing-Renderer/Whitted_RayTracing.html) <br>
+
+My GitHub repo here closely follows the 'Whitted-style' ray tracing method that made Turner Whitted famous back in 1980.  I use his recursive ray tracing technique to handle realistic reflections, refractions, and sharp shadows, just as Whitted did decades ago.  The only place where my technique diverges from, or builds upon, Whitted's technique is the use of the Hall Shading method (named after Roy Hall, another highly influental CG researcher in the 1980's).  Hall's method builds upon Whitted's technique by adding shadow caustics from transparent objects (not true caustics, but visually interesting in their own way), as well as randomly distributed reflection rays to simulate varying levels of roughness on metallic/specular surfaces.
+<br>
+<br>
 
 <h2>TODO</h2>
 
