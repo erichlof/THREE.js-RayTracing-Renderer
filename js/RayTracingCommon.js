@@ -38,6 +38,7 @@ in vec2 vUv;
 #define CLEARCOAT 3
 #define TRANSPARENT 4
 #define DIFFUSE_METAL 5
+#define PERFECT_MIRROR 6
 #define TRUE 1
 #define FALSE 0
 #define ONE_OVER_MAX_INT 1.0 / float(0xffffffffU)
@@ -104,7 +105,7 @@ vec3 doBlinnPhongSpecularLighting(vec3 rayColorMask, vec3 surfaceNormal, vec3 ha
 	// for metal materials (conductors) however, specular color gets tinted by the metal surface color
 	// therefore, in the metal case, 'rayColorMask' will get pre-tinted before it is passed into this function
 	vec3 specularColor = rayColorMask; // will either be white for dielectrics (usually vec3(1,1,1)), or tinted by metal color for metallics
-	specularColor *= clamp(lightColor, 0.0, 4.0);
+	specularColor *= lightColor;
 	float shininess = 1.0 - materialRoughness;
 	float shininessExponent = max(2000.0 * shininess * shininess * shininess, 5.0);
 	float specularIntensity = pow(max(0.0, dot(surfaceNormal, halfwayVector)), shininessExponent); // this is a powered cosine with shininess as the exponent
