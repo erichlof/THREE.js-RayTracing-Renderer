@@ -736,7 +736,7 @@ vec3 RayTrace()
 			diffuseContribution /= sceneUsesDirectionalLight == TRUE ? 1.0 : max(1.0, 0.5 * distance(spheres[0].position, intersectionPoint));
 			
 			// Specular is the bright highlight on shiny surfaces, resulting from a direct reflection of the light source itself
-			specularContribution = doBlinnPhongSpecularLighting(rayColorMask, shadingNormal, halfwayVector, lightColor, intersectionMaterial.roughness, diffuseIntensity);
+			specularContribution = doBlinnPhongSpecularLighting(rayColorMask, shadingNormal, halfwayVector, clamp(lightColor, 0.0, 4.0), intersectionMaterial.roughness, diffuseIntensity);
 			// when all 3 components (Ambient, Diffuse, and Specular) have been calculated, they are just simply added up to give the final lighting.
 			// Since Ambient lighting (global) is always present no matter what, it was immediately added a couple lines above.
 			// However, in order to add the Diffuse and Specular lighting contributions, we must be able to 'see' the light source from the surface's perspective.
@@ -758,7 +758,7 @@ vec3 RayTrace()
 			// Therefore, the Ambient (global bounced diffuse) and Diffuse (direct diffuse from light source) contributions are skipped.
 			// ambientContribution = NA
 			// diffuseContribution = NA
-			specularContribution = doBlinnPhongSpecularLighting(rayColorMask, shadingNormal, halfwayVector, lightColor, intersectionMaterial.roughness, diffuseIntensity);
+			specularContribution = doBlinnPhongSpecularLighting(rayColorMask, shadingNormal, halfwayVector, clamp(lightColor, 0.0, 4.0), intersectionMaterial.roughness, diffuseIntensity);
 			// we could technically do a shadow ray test (to see if the light is visible), but in the interest of speed, we go ahead and add the Specular contribution.
 			accumulatedColor += specularContribution;
 
@@ -785,7 +785,7 @@ vec3 RayTrace()
 			diffuseContribution /= sceneUsesDirectionalLight == TRUE ? 1.0 : max(1.0, 0.5 * distance(spheres[0].position, intersectionPoint));
 			diffuseContribution *= max(0.1, transmittance); // the diffuse reflections from the surface are transmitted through the ClearCoat material, so we must weight them accordingly
 			
-			specularContribution = doBlinnPhongSpecularLighting(rayColorMask, shadingNormal, halfwayVector, lightColor, intersectionMaterial.roughness, diffuseIntensity);
+			specularContribution = doBlinnPhongSpecularLighting(rayColorMask, shadingNormal, halfwayVector, clamp(lightColor, 0.0, 4.0), intersectionMaterial.roughness, diffuseIntensity);
 
 			// If this ClearCoat type of material is either the first thing that the camera ray encounters (bounces == 0), or the 2nd thing the ray encounters after reflecting from METAL (bounces == 1),
 			// then setup and save a reflection ray for later use. After we've done that, first we'll send out the usual shadow ray to see if the Diffuse and Specular contributions can be added. Then once the shadow ray 
@@ -820,7 +820,7 @@ vec3 RayTrace()
 				halfwayVector = (-rayDirection - (intersectionMaterial.IoR * directionToLight)) / (intersectionMaterial.IoR - 1.0);
 				halfwayVector = normalize(halfwayVector);
 			} */
-			specularContribution = doBlinnPhongSpecularLighting(rayColorMask, shadingNormal, halfwayVector, lightColor, intersectionMaterial.roughness, diffuseIntensity);
+			specularContribution = doBlinnPhongSpecularLighting(rayColorMask, shadingNormal, halfwayVector, clamp(lightColor, 0.0, 4.0), intersectionMaterial.roughness, diffuseIntensity);
 			// shadow rays are only test rays and must not contribute any lighting of their own.
 			// So if the current ray is a shadow ray (isShadowRay == TRUE), then we shut off the specular highlights.
 			specularContribution = (isShadowRay == TRUE) ? vec3(0) : specularContribution;
