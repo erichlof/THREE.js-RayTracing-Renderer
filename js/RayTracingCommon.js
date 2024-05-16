@@ -47,19 +47,16 @@ in vec2 vUv;
 
 THREE.ShaderChunk[ 'raytracing_core_functions' ] = `
 // globals used in rand() function
-vec4 randVec4; // samples and holds the RGBA blueNoise texture value for this pixel
-float randNumber; // the final randomly generated number (range: 0.0 to 1.0)
-float counter; // will get incremented by 1 on each call to rand()
-int channel; // the final selected color channel to use for rand() calc (range: 0 to 3, corresponds to R,G,B, or A)
+float blueNoise;
+float randNumber;
+// the following rand() is from a 2024 article by the great Jacco Bikker (og behind Brigade Path Tracer)
+// https://jacco.ompf2.com/2024/05/15/ray-tracing-with-voxels-in-c-series-part-4/ 
 float rand()
 {
-	counter++; // increment counter by 1 on every call to rand()
-	// cycles through channels, if modulus is 1.0, channel will always be 0 (the R color channel)
-	channel = int(mod(counter, 2.0)); 
-	// but if modulus was 4.0, channel will cycle through all available channels: 0,1,2,3,0,1,2,3, and so on...
-	randNumber = randVec4[channel]; // get value stored in channel 0:R, 1:G, 2:B, or 3:A
-	return fract(randNumber); // we're only interested in randNumber's fractional value between 0.0 (inclusive) and 1.0 (non-inclusive)
-	//return clamp(randNumber,0.0,0.999999999); // we're only interested in randNumber's fractional value between 0.0 (inclusive) and 1.0 (non-inclusive)
+	// ensure randNumber keeps evolving (even when called multiple times during the same animation Frame),
+	// by adding to itself the blueNoise texture lookup (which does not change), and FrameCounter multiplied with Golden Ratio
+	randNumber += (blueNoise + (uFrameCounter * 0.61803399));
+	return fract(randNumber); // we only want the fractional portion, so [0.0 to 1.0) (but not including 1.0)
 }
 // from iq https://www.shadertoy.com/view/4tXyWN
 // global seed used in rng() function
@@ -247,14 +244,11 @@ void main( void )
 	//vec3 camPos   = vec3( uCameraMatrix[3][0],  uCameraMatrix[3][1],  uCameraMatrix[3][2]);
 
 	// calculate unique seed for rng() function
-	seed = uvec2(uFrameCounter, uFrameCounter + 1.0) * uvec2(gl_FragCoord.xy);
+	seed = uvec2(uFrameCounter, uFrameCounter + 1.0) * uvec2(gl_FragCoord);
 	// initialize rand() variables
-	counter = -1.0; // will get incremented by 1 on each call to rand()
-	channel = 0; // the final selected color channel to use for rand() calc (range: 0 to 3, corresponds to R,G,B, or A)
 	randNumber = 0.0; // the final randomly-generated number (range: 0.0 to 1.0)
-	randVec4 = vec4(0); // samples and holds the RGBA blueNoise texture value for this pixel
-	randVec4 = texelFetch(uBlueNoiseTexture, ivec2(mod(floor(gl_FragCoord.xy) + floor(uRandomVec2 * 256.0), 256.0)), 0);
-	
+	blueNoise = texelFetch(uBlueNoiseTexture, ivec2(mod(floor(gl_FragCoord.xy), 256.0)), 0).r;
+
 	vec2 pixelOffset;
 	
 	// pixelOffset = vec2( tentFilter(uRandomVec2.x), tentFilter(uRandomVec2.y) );
