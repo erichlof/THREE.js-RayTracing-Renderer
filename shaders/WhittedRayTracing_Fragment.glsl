@@ -351,7 +351,7 @@ vec3 RayTrace()
 
 			if (bounces == 0)
 			{
-				reflectionRayColorMask = rayColorMask * 0.04;// * Re;
+				reflectionRayColorMask = rayColorMask * 0.05;// * Re;
 				reflectionRayDirection = reflect(rayDirection, shadingNormal); // reflect ray from surface
 				reflectionRayOrigin = intersectionPoint + shadingNormal * uEPS_intersect;
 				willNeedReflectionRay = TRUE;
@@ -359,7 +359,7 @@ vec3 RayTrace()
 
 			if (bounces == 1 && previousIntersectionMaterialType == TRANSPARENT)
 			{
-				reflectionRayColorMask2 = rayColorMask * 0.04;// * Re;
+				reflectionRayColorMask2 = rayColorMask * 0.05;// * Re;
 				reflectionRayDirection2 = reflect(rayDirection, shadingNormal); // reflect ray from surface
 				reflectionRayOrigin2 = intersectionPoint + shadingNormal * uEPS_intersect;
 				willNeedReflectionRay2 = TRUE;
@@ -367,7 +367,7 @@ vec3 RayTrace()
 
 			if (bounces == 2 && previousIntersectionMaterialType == TRANSPARENT)
 			{
-				reflectionRayColorMask3 = rayColorMask * 0.04;// * Re;
+				reflectionRayColorMask3 = rayColorMask * 0.05;// * Re;
 				reflectionRayDirection3 = reflect(rayDirection, shadingNormal); // reflect ray from surface
 				reflectionRayOrigin3 = intersectionPoint + shadingNormal * uEPS_intersect;
 				willNeedReflectionRay3 = TRUE;
