@@ -114,7 +114,7 @@ let KeyboardState = {
 function onKeyDown(event)
 {
 	event.preventDefault();
-
+	
 	KeyboardState[event.code] = true;
 }
 
@@ -468,7 +468,7 @@ function init()
 	// load a resource
 	blueNoiseTexture = textureLoader.load(
 		// resource URL
-		'textures/BlueNoise_RGBA256.png',
+		'textures/BlueNoise_R_128.png',
 
 		// onLoad callback
 		function(texture)
