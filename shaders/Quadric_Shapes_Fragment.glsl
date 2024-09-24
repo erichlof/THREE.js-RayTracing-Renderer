@@ -22,6 +22,7 @@ uniform mat4 uCappedParaboloidInvMatrix;
 uniform mat4 uHyperboloidInvMatrix;
 uniform mat4 uHyperbolicParaboloidInvMatrix;
 uniform mat4 uCapsuleInvMatrix;
+uniform mat4 uConeCapsuleInvMatrix;
 
 
 #define N_RECTANGLES 1
@@ -38,6 +39,7 @@ uniform mat4 uCapsuleInvMatrix;
 #define N_HYPERBOLOIDS 1
 #define N_HYPERBOLIC_PARABOLOIDS 1
 #define N_CAPSULES 1
+#define N_CONE_CAPSULES 1
 
 vec3 rayOrigin, rayDirection;
 
@@ -56,6 +58,7 @@ struct UnitCappedParaboloid { vec2 uvScale; Material material; };
 struct UnitHyperboloid { vec2 uvScale; Material material; };
 struct UnitHyperbolicParaboloid { vec2 uvScale; Material material; };
 struct UnitCapsule { vec2 uvScale; Material material; };
+struct UnitConeCapsule { vec2 uvScale; Material material; };
 
 // recorded intersection data:
 vec3 intersectionNormal;
@@ -78,6 +81,7 @@ UnitCappedParaboloid cappedParaboloids[N_CAPPED_PARABOLOIDS];
 UnitHyperboloid hyperboloids[N_HYPERBOLOIDS];
 UnitHyperbolicParaboloid hyperbolicParaboloids[N_HYPERBOLIC_PARABOLOIDS];
 UnitCapsule capsules[N_CAPSULES];
+UnitConeCapsule coneCapsules[N_CONE_CAPSULES];
 
 
 #include <raytracing_core_functions>
@@ -109,6 +113,8 @@ UnitCapsule capsules[N_CAPSULES];
 #include <raytracing_unit_hyperbolic_paraboloid_intersect>
 
 #include <raytracing_unit_capsule_intersect>
+
+#include <raytracing_unit_cone_capsule_intersect>
 
 
 
@@ -366,6 +372,20 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 		intersectionNormal = transpose(mat3(uCapsuleInvMatrix)) * normal;
 		intersectionMaterial = capsules[0].material;
 		intersectionUV = calcUnitCylinderUV(intersectionPoint) * capsules[0].uvScale;
+		intersectionShapeIsClosed = TRUE;
+	}
+
+	// transform ray into Unit coneCapsule's object space
+	rObjOrigin = vec3( uConeCapsuleInvMatrix * vec4(rayOrigin, 1.0) );
+	rObjDirection = vec3( uConeCapsuleInvMatrix * vec4(rayDirection, 0.0) );
+	d = UnitConeCapsuleIntersect(0.4, rObjOrigin, rObjDirection, normal);
+	if (d < t)
+	{
+		t = d;
+		intersectionPoint = rObjOrigin + (t * rObjDirection);
+		intersectionNormal = transpose(mat3(uConeCapsuleInvMatrix)) * normal;
+		intersectionMaterial = coneCapsules[0].material;
+		intersectionUV = calcUnitCylinderUV(intersectionPoint) * coneCapsules[0].uvScale;
 		intersectionShapeIsClosed = TRUE;
 	}
 
@@ -816,6 +836,7 @@ void SetupScene(void)
 	hyperboloids[0] = UnitHyperboloid(vec2(8, 6), whiteRedCheckerMaterial);
 	hyperbolicParaboloids[0] = UnitHyperbolicParaboloid(vec2(4, 4), whiteRedCheckerMaterial);
 	capsules[0] = UnitCapsule(vec2(8, 3), whiteRedCheckerMaterial);
+	coneCapsules[0] = UnitConeCapsule(vec2(8, 3), whiteRedCheckerMaterial);
 }
 
 
