@@ -1034,6 +1034,100 @@ float UnitCapsuleIntersect( float heightRadius, vec3 ro, vec3 rd, out vec3 norma
 }
 `;
 
+THREE.ShaderChunk[ 'raytracing_unit_cone_capsule_intersect' ] = `
+//------------------------------------------------------------------------------------------------------------
+float UnitConeCapsuleIntersect( float apexRadius, vec3 ro, vec3 rd, out vec3 normal )
+//------------------------------------------------------------------------------------------------------------
+{
+	vec3 hitPoint, L;
+	float t0, t1;
+	float t = INFINITY;
+
+	float k = 1.0 - (apexRadius * 1.0); // k is the inverse of the cone's opening width (apex radius)
+	// valid range for k: 0.01 to 1.0 (a value of 1.0 makes a cone with a sharp, pointed apex)
+	k = clamp(k, 0.01, 1.0);
+	
+	float j = 1.0 / k;
+	// the '(ro.y - h)' parts below truncate the top half of the double-cone, leaving a single cone with apex at top
+	float h = (j * 2.0) - 1.0;		   // (k * 0.25) makes the normal cone's bottom circular base have a unit radius of 1.0
+	float a = (j * rd.x * rd.x) + (j * rd.z * rd.z) - ((k * 0.25) * rd.y * rd.y);
+    	float b = 2.0 * ((j * rd.x * ro.x) + (j * rd.z * ro.z) - ((k * 0.25) * rd.y * (ro.y - h)));
+    	float c = (j * ro.x * ro.x) + (j * ro.z * ro.z) - ((k * 0.25) * (ro.y - h) * (ro.y - h));
+	solveQuadratic(a, b, c, t0, t1);
+	
+	// first, try t0
+	hitPoint = ro + (rd * t0);
+	if (t0 > 0.0 && t0 < t && abs(hitPoint.y) <= 1.0)
+	{
+		t = t0;
+		normal = vec3(j * hitPoint.x, (k * 0.25) * (h - hitPoint.y), j * hitPoint.z);
+	}
+	// if t0 was invalid, try t1
+	hitPoint = ro + (rd * t1);
+	if (t1 > 0.0 && t1 < t && abs(hitPoint.y) <= 1.0)
+	{
+		t = t1;
+		normal = vec3(j * hitPoint.x, (k * 0.25) * (h - hitPoint.y), j * hitPoint.z);
+	}
+	
+	// now intersect sphere with 'apexRadius' located at top opening of the cone, or vec3(0,1,0)
+	L = ro - vec3(0, 1, 0);
+	a = dot(rd, rd);
+	b = 2.0 * dot(rd, L);
+	c = dot(L, L) - (apexRadius * apexRadius);
+	solveQuadratic(a, b, c, t0, t1);
+	// first, try t0
+	if (t0 > 0.0 && t0 < t)
+	{
+		hitPoint = ro + (rd * t0);
+		if (hitPoint.y >= 1.0)
+		{
+			t = t0;
+			normal = vec3(hitPoint.x, hitPoint.y - 1.0, hitPoint.z);
+		}	
+	}
+	// if t0 was invalid, try t1
+	if (t1 > 0.0 && t1 < t)
+	{
+		hitPoint = ro + (rd * t1);
+		if (hitPoint.y >= 1.0)
+		{
+			t = t1;
+			normal = vec3(hitPoint.x, hitPoint.y - 1.0, hitPoint.z);
+		}	
+	}
+	
+	// lastly, intersect unit-radius sphere located at bottom opening of the cone, or vec3(0,-1,0)
+	L = ro - vec3(0, -1, 0);
+	a = dot(rd, rd);
+	b = 2.0 * dot(rd, L);
+	c = dot(L, L) - 1.0;
+	solveQuadratic(a, b, c, t0, t1);
+	// first, try t0
+	if (t0 > 0.0 && t0 < t)
+	{
+		hitPoint = ro + (rd * t0);
+		if (hitPoint.y <= -1.0)
+		{
+			t = t0;
+			normal = vec3(hitPoint.x, hitPoint.y + 1.0, hitPoint.z);
+		}	
+	}
+	// if t0 was invalid, try t1
+	if (t1 > 0.0 && t1 < t)
+	{
+		hitPoint = ro + (rd * t1);
+		if (hitPoint.y <= -1.0)
+		{
+			t = t1;
+			normal = vec3(hitPoint.x, hitPoint.y + 1.0, hitPoint.z);
+		}	
+	}
+	
+	return t;
+}
+`;
+
 THREE.ShaderChunk[ 'raytracing_unit_box_intersect' ] = `
 
 float UnitBoxIntersect( vec3 ro, vec3 rd )
