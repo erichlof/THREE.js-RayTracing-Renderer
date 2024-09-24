@@ -5,7 +5,7 @@ let numOfImageTexturesLoaded = 0;
 let shearMatrix = new THREE.Matrix4();
 let groundRectangle, disk, box, wedge;
 let diffuseSphere, metalSphere, coatSphere, glassSphere;
-let cylinder, cone, paraboloid, hyperboloid, hyperbolicParaboloid, capsule;
+let cylinder, cone, paraboloid, hyperboloid, hyperbolicParaboloid, capsule, coneCapsule;
 let cappedCylinder, cappedCone, cappedParaboloid;
 
 
@@ -20,10 +20,8 @@ function initSceneData()
 	
 	// pixelRatio is resolution - range: 0.5(half resolution) to 1.0(full resolution)
 	pixelRatio = mouseControl ? 0.75 : 0.75; // less demanding on battery-powered mobile devices
-
 	//EPS_intersect = 0.01;
 	
-
 	// set camera's field of view and other options
 	worldCamera.fov = 60;
 	focusDistance = 20.0;
@@ -366,6 +364,25 @@ function initSceneData()
 	capsule.transform.updateMatrixWorld(true); // 'true' forces a matrix update now, rather than waiting for Three.js' 'renderer.render()' call which happens last
 	
 
+	// checkered clearcoat coneCapsule
+	coneCapsule = new RayTracingShape("coneCapsule");
+
+	coneCapsule.material.color.set(1.0, 1.0, 1.0); // (r,g,b) range: 0.0 to 1.0 / default is rgb(1,1,1) white
+	coneCapsule.material.opacity = 1.0; // range: 0.0 to 1.0 / default is 1.0 (fully opaque)
+	coneCapsule.material.ior = 1.4; // range: 1.0(air) to 2.33(diamond) / default is 1.5(glass) / other useful ior is 1.33(water)
+	coneCapsule.material.clearcoat = 1.0; // range: 0.0 to 1.0 / default is 0.0 (no clearcoat)
+	coneCapsule.material.metalness = 0.0; // range: either 0.0 or 1.0 / default is 0.0 (not metal)
+	coneCapsule.material.roughness = 0.0; // range: 0.0 to 1.0 / default is 0.0 (no roughness, perfectly smooth)
+
+	coneCapsule.uvScale.set(2, 1); // if checkered or using a texture, how many times should the uv's repeat in the X axis / Y axis?
+
+	coneCapsule.transform.scale.set(1.5, 1.5, 1.5);
+	coneCapsule.transform.position.set(14, 2.1, -2);
+	coneCapsule.transform.rotation.set(0, 0, Math.PI);
+	// after specifying any desired transforms (scale, position, rotation), we must call updateMatrixWorld() to actually fill in the shape's matrix with these new values
+	coneCapsule.transform.updateMatrixWorld(true); // 'true' forces a matrix update now, rather than waiting for Three.js' 'renderer.render()' call which happens last
+
+
 
 	// In addition to the default GUI on all demos, add any special GUI elements that this particular demo requires
 	
@@ -388,6 +405,7 @@ function initSceneData()
 	rayTracingUniforms.uHyperboloidInvMatrix = { value: new THREE.Matrix4() };
 	rayTracingUniforms.uHyperbolicParaboloidInvMatrix = { value: new THREE.Matrix4() };
 	rayTracingUniforms.uCapsuleInvMatrix = { value: new THREE.Matrix4() };
+	rayTracingUniforms.uConeCapsuleInvMatrix = { value: new THREE.Matrix4() };
 
 
 	// copy each shape's inverse matrix over to the GPU as a uniform for use in the ray tracing shader.
@@ -408,6 +426,7 @@ function initSceneData()
 	rayTracingUniforms.uHyperboloidInvMatrix.value.copy(hyperboloid.transform.matrixWorld).invert();
 	rayTracingUniforms.uHyperbolicParaboloidInvMatrix.value.copy(hyperbolicParaboloid.transform.matrixWorld).invert();
 	rayTracingUniforms.uCapsuleInvMatrix.value.copy(capsule.transform.matrixWorld).invert();
+	rayTracingUniforms.uConeCapsuleInvMatrix.value.copy(coneCapsule.transform.matrixWorld).invert();
 
 } // end function initSceneData()
 
