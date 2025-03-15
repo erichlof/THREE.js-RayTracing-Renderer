@@ -536,6 +536,7 @@ function initTHREEjs()
 	// constantly updated inside the 3d scene.  Its view will ultimately get passed back to the 
 	// stationary quadCamera, which renders the scene to a fullscreen quad (made up of 2 large triangles).
 	worldCamera = new THREE.PerspectiveCamera(60, document.body.clientWidth / document.body.clientHeight, 1, 1000);
+	storedFOV = worldCamera.fov;
 	rayTracingScene.add(worldCamera);
 
 	controls = new FirstPersonCameraControls(worldCamera);
@@ -772,7 +773,8 @@ function animate()
 			cameraIsMoving = true;
 			mobileControlsMoveX = oldDeltaX - newDeltaX;
 			// mobileJoystick X movement (left and right) affects camera rotation around the Y axis	
-			cameraControlsYawObject.rotation.y += (mobileControlsMoveX) * 0.01;
+			if (mobileControlsMoveX)
+				cameraControlsYawObject.rotation.y += (mobileControlsMoveX) * 0.01;
 		}
 
 		newDeltaY = joystickDeltaY * cameraRotationSpeed;
@@ -782,7 +784,8 @@ function animate()
 			cameraIsMoving = true;
 			mobileControlsMoveY = oldDeltaY - newDeltaY;
 			// mobileJoystick Y movement (up and down) affects camera rotation around the X axis	
-			cameraControlsPitchObject.rotation.x += (mobileControlsMoveY) * 0.01;
+			if (mobileControlsMoveY)
+				cameraControlsPitchObject.rotation.x += (mobileControlsMoveY) * 0.01;
 		}
 
 		// clamp the camera's vertical movement (around the x-axis) to the scene's 'ceiling' and 'floor',
