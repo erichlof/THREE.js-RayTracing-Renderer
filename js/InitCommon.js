@@ -36,7 +36,7 @@ let focusDistance = 132.0;
 let increaseFocusDist = false;
 let decreaseFocusDist = false;
 let focusChangeSpeed = 1;
-let pixelRatio = 0.5;
+let pixelRatio = 1.0;
 let windowIsBeingResized = false;
 let TWO_PI = Math.PI * 2;
 let sampleCounter = 0.0; // will get increased by 1 in animation loop before rendering
@@ -390,34 +390,35 @@ function init()
 
 	gui = new GUI();
 
-	pixel_ResolutionController = gui.add(pixel_ResolutionObject, 'pixel_Resolution', 0.5, 1.0, 0.05).onChange(handlePixelResolutionChange);
-	if (!mouseControl)
-		orthographicCamera_ToggleController = gui.add(orthographicCamera_ToggleObject, 'Orthographic_Camera', false).onChange(handleCameraProjectionChange);
-
 	gui.domElement.style.userSelect = "none";
 	gui.domElement.style.MozUserSelect = "none";
 
 
-	if (mouseControl) 
+	if (mouseControl) // on desktop
 	{
+		pixel_ResolutionController = gui.add(pixel_ResolutionObject, 'pixel_Resolution', 0.5, 2.0, 0.1).onChange(handlePixelResolutionChange);
 
-		gui.domElement.addEventListener("mouseenter", function(event) 
+		gui.domElement.addEventListener("mouseenter", function (event) 
 		{
 			ableToEngagePointerLock = false;
 		}, false);
-		gui.domElement.addEventListener("mouseleave", function(event) 
+		gui.domElement.addEventListener("mouseleave", function (event) 
 		{
 			ableToEngagePointerLock = true;
 		}, false);
 
 		window.addEventListener('wheel', onMouseWheel, false);
 
-		window.addEventListener("dblclick", function(event) 
+		// window.addEventListener("click", function(event) 
+		// {
+		// 	event.preventDefault();	
+		// }, false);
+		window.addEventListener("dblclick", function (event) 
 		{
 			event.preventDefault();
 		}, false);
 
-		document.body.addEventListener("click", function(event) 
+		document.body.addEventListener("click", function (event) 
 		{
 			if (!ableToEngagePointerLock)
 				return;
@@ -426,7 +427,7 @@ function init()
 		}, false);
 
 
-		pointerlockChange = function(event)
+		pointerlockChange = function (event)
 		{
 			if (document.pointerLockElement === document.body ||
 				document.mozPointerLockElement === document.body || document.webkitPointerLockElement === document.body)
@@ -449,6 +450,12 @@ function init()
 		document.addEventListener('webkitpointerlockchange', pointerlockChange, false);
 
 	} // end if (mouseControl)
+
+	if (!mouseControl) // on mobile
+	{
+		pixel_ResolutionController = gui.add(pixel_ResolutionObject, 'pixel_Resolution', 0.5, 1.0, 0.05).onChange(handlePixelResolutionChange);
+		orthographicCamera_ToggleController = gui.add(orthographicCamera_ToggleObject, 'Orthographic_Camera', false).onChange(handleCameraProjectionChange);
+	}
 
 
 	/* // Fullscreen API (optional)
