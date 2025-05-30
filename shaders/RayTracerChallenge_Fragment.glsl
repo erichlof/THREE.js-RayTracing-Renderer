@@ -39,7 +39,6 @@ UnitSphere spheres[N_SPHERES];
 #include <raytracing_unit_sphere_intersect>
 
 
-
 //---------------------------------------------------------------------------------------
 float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 //---------------------------------------------------------------------------------------
@@ -67,7 +66,29 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 		}
 	}
 
-	
+
+	for (int i = 0; i < 17; i++)
+	{
+		rObjOrigin = vec3( uBoxesInvMatrices[i] * vec4(rayOrigin, 1.0) );
+		rObjDirection = vec3( uBoxesInvMatrices[i] * vec4(rayDirection, 0.0) );
+		d = UnitBoxIntersect( rObjOrigin, rObjDirection );
+		if (d < t)
+		{
+			t = d;
+			intersectionPoint = rObjOrigin + (t * rObjDirection); // intersection in box's object space, vec3(-1,-1,-1) to vec3(+1,+1,+1)
+			absPoint = abs(intersectionPoint);
+			// start out with default Z normal of (0,0,-1) or (0,0,+1)
+			normal = vec3(0, 0, intersectionPoint.z);
+			if (absPoint.x > absPoint.y && absPoint.x >= absPoint.z)
+				normal = vec3(intersectionPoint.x, 0, 0);	
+			else if (absPoint.y > absPoint.x && absPoint.y >= absPoint.z)
+				normal = vec3(0, intersectionPoint.y, 0);
+				
+			intersectionNormal = transpose(mat3(uBoxesInvMatrices[i])) * normal;
+			intersectionMaterial = boxes[i].material;
+			intersectionShapeIsClosed = TRUE;
+		}
+	}
 
 	// transform ray into Glass Unit Sphere's object space
 	rObjOrigin = vec3( uGlassSphereInvMatrix * vec4(rayOrigin, 1.0) );
@@ -83,8 +104,9 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 		intersectionShapeIsClosed = TRUE;
 	}
 
-
+/* 
 	// transform ray into Unit Box's object space
+
 	rObjOrigin = vec3( uBoxesInvMatrices[0] * vec4(rayOrigin, 1.0) );
 	rObjDirection = vec3( uBoxesInvMatrices[0] * vec4(rayDirection, 0.0) );
 	d = UnitBoxIntersect( rObjOrigin, rObjDirection );
@@ -104,6 +126,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 		intersectionMaterial = boxes[0].material;
 		intersectionShapeIsClosed = TRUE;
 	}
+
 	rObjOrigin = vec3( uBoxesInvMatrices[1] * vec4(rayOrigin, 1.0) );
 	rObjDirection = vec3( uBoxesInvMatrices[1] * vec4(rayDirection, 0.0) );
 	d = UnitBoxIntersect( rObjOrigin, rObjDirection );
@@ -123,6 +146,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 		intersectionMaterial = boxes[1].material;
 		intersectionShapeIsClosed = TRUE;
 	}
+
 	rObjOrigin = vec3( uBoxesInvMatrices[2] * vec4(rayOrigin, 1.0) );
 	rObjDirection = vec3( uBoxesInvMatrices[2] * vec4(rayDirection, 0.0) );
 	d = UnitBoxIntersect( rObjOrigin, rObjDirection );
@@ -142,6 +166,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 		intersectionMaterial = boxes[2].material;
 		intersectionShapeIsClosed = TRUE;
 	}
+
 	rObjOrigin = vec3( uBoxesInvMatrices[3] * vec4(rayOrigin, 1.0) );
 	rObjDirection = vec3( uBoxesInvMatrices[3] * vec4(rayDirection, 0.0) );
 	d = UnitBoxIntersect( rObjOrigin, rObjDirection );
@@ -161,6 +186,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 		intersectionMaterial = boxes[3].material;
 		intersectionShapeIsClosed = TRUE;
 	}
+
 	rObjOrigin = vec3( uBoxesInvMatrices[4] * vec4(rayOrigin, 1.0) );
 	rObjDirection = vec3( uBoxesInvMatrices[4] * vec4(rayDirection, 0.0) );
 	d = UnitBoxIntersect( rObjOrigin, rObjDirection );
@@ -180,6 +206,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 		intersectionMaterial = boxes[4].material;
 		intersectionShapeIsClosed = TRUE;
 	}
+
 	rObjOrigin = vec3( uBoxesInvMatrices[5] * vec4(rayOrigin, 1.0) );
 	rObjDirection = vec3( uBoxesInvMatrices[5] * vec4(rayDirection, 0.0) );
 	d = UnitBoxIntersect( rObjOrigin, rObjDirection );
@@ -199,6 +226,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 		intersectionMaterial = boxes[5].material;
 		intersectionShapeIsClosed = TRUE;
 	}
+
 	rObjOrigin = vec3( uBoxesInvMatrices[6] * vec4(rayOrigin, 1.0) );
 	rObjDirection = vec3( uBoxesInvMatrices[6] * vec4(rayDirection, 0.0) );
 	d = UnitBoxIntersect( rObjOrigin, rObjDirection );
@@ -218,6 +246,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 		intersectionMaterial = boxes[6].material;
 		intersectionShapeIsClosed = TRUE;
 	}
+
 	rObjOrigin = vec3( uBoxesInvMatrices[7] * vec4(rayOrigin, 1.0) );
 	rObjDirection = vec3( uBoxesInvMatrices[7] * vec4(rayDirection, 0.0) );
 	d = UnitBoxIntersect( rObjOrigin, rObjDirection );
@@ -237,6 +266,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 		intersectionMaterial = boxes[7].material;
 		intersectionShapeIsClosed = TRUE;
 	}
+
 	rObjOrigin = vec3( uBoxesInvMatrices[8] * vec4(rayOrigin, 1.0) );
 	rObjDirection = vec3( uBoxesInvMatrices[8] * vec4(rayDirection, 0.0) );
 	d = UnitBoxIntersect( rObjOrigin, rObjDirection );
@@ -256,6 +286,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 		intersectionMaterial = boxes[8].material;
 		intersectionShapeIsClosed = TRUE;
 	}
+
 	rObjOrigin = vec3( uBoxesInvMatrices[9] * vec4(rayOrigin, 1.0) );
 	rObjDirection = vec3( uBoxesInvMatrices[9] * vec4(rayDirection, 0.0) );
 	d = UnitBoxIntersect( rObjOrigin, rObjDirection );
@@ -275,6 +306,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 		intersectionMaterial = boxes[9].material;
 		intersectionShapeIsClosed = TRUE;
 	}
+
 	rObjOrigin = vec3( uBoxesInvMatrices[10] * vec4(rayOrigin, 1.0) );
 	rObjDirection = vec3( uBoxesInvMatrices[10] * vec4(rayDirection, 0.0) );
 	d = UnitBoxIntersect( rObjOrigin, rObjDirection );
@@ -294,6 +326,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 		intersectionMaterial = boxes[10].material;
 		intersectionShapeIsClosed = TRUE;
 	}
+
 	rObjOrigin = vec3( uBoxesInvMatrices[11] * vec4(rayOrigin, 1.0) );
 	rObjDirection = vec3( uBoxesInvMatrices[11] * vec4(rayDirection, 0.0) );
 	d = UnitBoxIntersect( rObjOrigin, rObjDirection );
@@ -312,7 +345,8 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 		intersectionNormal = transpose(mat3(uBoxesInvMatrices[11])) * normal;
 		intersectionMaterial = boxes[11].material;
 		intersectionShapeIsClosed = TRUE;
-	}
+	} 
+
 	rObjOrigin = vec3( uBoxesInvMatrices[12] * vec4(rayOrigin, 1.0) );
 	rObjDirection = vec3( uBoxesInvMatrices[12] * vec4(rayDirection, 0.0) );
 	d = UnitBoxIntersect( rObjOrigin, rObjDirection );
@@ -332,6 +366,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 		intersectionMaterial = boxes[12].material;
 		intersectionShapeIsClosed = TRUE;
 	}
+
 	rObjOrigin = vec3( uBoxesInvMatrices[13] * vec4(rayOrigin, 1.0) );
 	rObjDirection = vec3( uBoxesInvMatrices[13] * vec4(rayDirection, 0.0) );
 	d = UnitBoxIntersect( rObjOrigin, rObjDirection );
@@ -351,6 +386,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 		intersectionMaterial = boxes[13].material;
 		intersectionShapeIsClosed = TRUE;
 	}
+
 	rObjOrigin = vec3( uBoxesInvMatrices[14] * vec4(rayOrigin, 1.0) );
 	rObjDirection = vec3( uBoxesInvMatrices[14] * vec4(rayDirection, 0.0) );
 	d = UnitBoxIntersect( rObjOrigin, rObjDirection );
@@ -370,6 +406,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 		intersectionMaterial = boxes[14].material;
 		intersectionShapeIsClosed = TRUE;
 	}
+
 	rObjOrigin = vec3( uBoxesInvMatrices[15] * vec4(rayOrigin, 1.0) );
 	rObjDirection = vec3( uBoxesInvMatrices[15] * vec4(rayDirection, 0.0) );
 	d = UnitBoxIntersect( rObjOrigin, rObjDirection );
@@ -389,6 +426,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 		intersectionMaterial = boxes[15].material;
 		intersectionShapeIsClosed = TRUE;
 	}
+
 	rObjOrigin = vec3( uBoxesInvMatrices[16] * vec4(rayOrigin, 1.0) );
 	rObjDirection = vec3( uBoxesInvMatrices[16] * vec4(rayDirection, 0.0) );
 	d = UnitBoxIntersect( rObjOrigin, rObjDirection );
@@ -407,7 +445,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 		intersectionNormal = transpose(mat3(uBoxesInvMatrices[16])) * normal;
 		intersectionMaterial = boxes[16].material;
 		intersectionShapeIsClosed = TRUE;
-	}
+	} */
 
 
 	return t;
