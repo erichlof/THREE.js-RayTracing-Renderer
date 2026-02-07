@@ -377,8 +377,8 @@ function initSceneData()
 	coneCapsule.uvScale.set(2, 1); // if checkered or using a texture, how many times should the uv's repeat in the X axis / Y axis?
 
 	coneCapsule.transform.scale.set(1.5, 1.5, 1.5);
-	coneCapsule.transform.position.set(14, 2.1, -2);
-	coneCapsule.transform.rotation.set(0, 0, Math.PI);
+	coneCapsule.transform.position.set(14, 3, -2);
+	//coneCapsule.transform.rotation.set(0, 0, Math.PI);
 	// after specifying any desired transforms (scale, position, rotation), we must call updateMatrixWorld() to actually fill in the shape's matrix with these new values
 	coneCapsule.transform.updateMatrixWorld(true); // 'true' forces a matrix update now, rather than waiting for Three.js' 'renderer.render()' call which happens last
 
