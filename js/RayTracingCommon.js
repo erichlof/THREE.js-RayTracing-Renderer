@@ -1036,92 +1036,96 @@ float UnitCapsuleIntersect( float heightRadius, vec3 ro, vec3 rd, out vec3 norma
 
 THREE.ShaderChunk[ 'raytracing_unit_cone_capsule_intersect' ] = `
 //------------------------------------------------------------------------------------------------------------
-float UnitConeCapsuleIntersect( float apexRadius, vec3 ro, vec3 rd, out vec3 normal )
+float UnitConeCapsuleIntersect( float apexRadius, float endCapsYDistFromCenter, vec3 ro, vec3 rd, out vec3 normal )
 //------------------------------------------------------------------------------------------------------------
-{
+{	
+	endCapsYDistFromCenter = max(0.01, endCapsYDistFromCenter);
 	vec3 hitPoint, L;
 	float t0, t1;
 	float t = INFINITY;
 
-	float k = 1.0 - (apexRadius * 1.0); // k is the inverse of the cone's opening width (apex radius)
-	// valid range for k: 0.01 to 1.0 (a value of 1.0 makes a cone with a sharp, pointed apex)
-	k = clamp(k, 0.01, 1.0);
-	
-	float j = 1.0 / k;
-	// the '(ro.y - h)' parts below truncate the top half of the double-cone, leaving a single cone with apex at top
-	float h = (j * 2.0) - 1.0;		   // (k * 0.25) makes the normal cone's bottom circular base have a unit radius of 1.0
-	float a = (j * rd.x * rd.x) + (j * rd.z * rd.z) - ((k * 0.25) * rd.y * rd.y);
-    	float b = 2.0 * ((j * rd.x * ro.x) + (j * rd.z * ro.z) - ((k * 0.25) * rd.y * (ro.y - h)));
-    	float c = (j * ro.x * ro.x) + (j * ro.z * ro.z) - ((k * 0.25) * (ro.y - h) * (ro.y - h));
+	// the following 16 lines of code that calculates the resulting cone that is tangent to the outsides of both end-cap spheres is from:
+	// https://www.shadertoy.com/view/XdVyRd by user MrShoor.  I usually like to calculate everything on my own in my big library of intersection
+	// functions here in RayTracingCommon.js, but I wasn't smart enough(ha) to know how to calculate this tangent cone, even though I tried many things.
+	vec2 spYRad1 = vec2(-endCapsYDistFromCenter, 1); // bottom base sphere cap (spYRad1.y) is always unit radius
+	vec2 spYRad2 = vec2(+endCapsYDistFromCenter, apexRadius); // top sphere cap (spYRad2.y) can be any radius, but standard range: 0-1
+	vec2 ConeCaps;
+	float spdy = spYRad2.x - spYRad1.x;
+	float h1 = ((spYRad1.y * spYRad2.y) - (spYRad1.y * spYRad1.y)) / spdy;
+	float h2 = ((spYRad2.y * spYRad2.y) - (spYRad1.y * spYRad2.y)) / spdy;
+	ConeCaps.x = spYRad1.x - h1;
+	ConeCaps.y = spYRad2.x - h2;
+	float ConeR1 = sqrt((spYRad1.y * spYRad1.y) - (h1 * h1));
+	float ConeR2 = sqrt((spYRad2.y * spYRad2.y) - (h2 * h2));
+	vec2 dYdR = vec2(ConeCaps.y - ConeCaps.x, ConeR2 - ConeR1);
+	vec2 ConeR_ab;
+	ConeR_ab.x = dYdR.y / dYdR.x;
+	ConeR_ab.y = ConeR2 - (ConeCaps.y * ConeR_ab.x);
+	float Al = ConeR_ab.x * rd.y;
+    	float Bl = (ConeR_ab.x * ro.y) + ConeR_ab.y;
+
+	// first, intersect the calculated cone that is tangent to both end-cap spheres
+	float a = (rd.x * rd.x) + (rd.z * rd.z) - (Al * Al);
+    	float b = 2.0 * ((rd.x * ro.x) + (rd.z * ro.z) - (Al * Bl));
+    	float c = (ro.x * ro.x) + (ro.z * ro.z) - (Bl * Bl);
 	solveQuadratic(a, b, c, t0, t1);
-	
 	// first, try t0
 	hitPoint = ro + (rd * t0);
-	if (t0 > 0.0 && t0 < t && abs(hitPoint.y) <= 1.0)
+	if (t0 > 0.0 && hitPoint.y >= ConeCaps.x && hitPoint.y <= ConeCaps.y)
 	{
 		t = t0;
-		normal = vec3(j * hitPoint.x, (k * 0.25) * (h - hitPoint.y), j * hitPoint.z);
+		normal.xz = normalize(ro.xz + rd.xz * t);
+		normal.y = -ConeR_ab.x;
 	}
 	// if t0 was invalid, try t1
 	hitPoint = ro + (rd * t1);
-	if (t1 > 0.0 && t1 < t && abs(hitPoint.y) <= 1.0)
+	if (t1 > 0.0 && t1 < t && hitPoint.y >= ConeCaps.x && hitPoint.y <= ConeCaps.y)
 	{
 		t = t1;
-		normal = vec3(j * hitPoint.x, (k * 0.25) * (h - hitPoint.y), j * hitPoint.z);
+		normal.xz = normalize(ro.xz + rd.xz * t);
+		normal.y = -ConeR_ab.x;
 	}
-	
-	// now intersect sphere with 'apexRadius' located at top opening of the cone, or vec3(0,1,0)
-	L = ro - vec3(0, 1, 0);
+
+	// now intersect sphere with 'apexRadius' located at top opening of the cone, or vec3(0,endCapsYDistFromCenter,0)
+	L = ro - vec3(0, endCapsYDistFromCenter, 0);
 	a = dot(rd, rd);
 	b = 2.0 * dot(rd, L);
 	c = dot(L, L) - (apexRadius * apexRadius);
 	solveQuadratic(a, b, c, t0, t1);
 	// first, try t0
-	if (t0 > 0.0 && t0 < t)
+	hitPoint = ro + (rd * t0);
+	if (t0 > 0.0 && t0 < t && hitPoint.y > ConeCaps.y)
 	{
-		hitPoint = ro + (rd * t0);
-		if (hitPoint.y >= 1.0)
-		{
-			t = t0;
-			normal = vec3(hitPoint.x, hitPoint.y - 1.0, hitPoint.z);
-		}	
+		t = t0;
+		normal = vec3(hitPoint.x, hitPoint.y - endCapsYDistFromCenter, hitPoint.z);	
 	}
 	// if t0 was invalid, try t1
-	if (t1 > 0.0 && t1 < t)
+	hitPoint = ro + (rd * t1);
+	if (t1 > 0.0 && t1 < t && hitPoint.y > ConeCaps.y)
 	{
-		hitPoint = ro + (rd * t1);
-		if (hitPoint.y >= 1.0)
-		{
-			t = t1;
-			normal = vec3(hitPoint.x, hitPoint.y - 1.0, hitPoint.z);
-		}	
+		t = t1;
+		normal = vec3(hitPoint.x, hitPoint.y - endCapsYDistFromCenter, hitPoint.z);	
 	}
 	
-	// lastly, intersect unit-radius sphere located at bottom opening of the cone, or vec3(0,-1,0)
-	L = ro - vec3(0, -1, 0);
+	// lastly, intersect unit-radius sphere located at bottom opening of the cone, or vec3(0,-endCapsYDistFromCenter,0)
+	L = ro - vec3(0, -endCapsYDistFromCenter, 0);
 	a = dot(rd, rd);
 	b = 2.0 * dot(rd, L);
-	c = dot(L, L) - 1.0;
+	c = dot(L, L) - 1.0; // 1.0 = (radius * radius) = (1.0 * 1.0)
 	solveQuadratic(a, b, c, t0, t1);
 	// first, try t0
-	if (t0 > 0.0 && t0 < t)
+	hitPoint = ro + (rd * t0);
+	if (t0 > 0.0 && t0 < t && hitPoint.y < ConeCaps.x)
 	{
-		hitPoint = ro + (rd * t0);
-		if (hitPoint.y <= -1.0)
-		{
-			t = t0;
-			normal = vec3(hitPoint.x, hitPoint.y + 1.0, hitPoint.z);
-		}	
+		t = t0;
+		normal = vec3(hitPoint.x, hitPoint.y + endCapsYDistFromCenter, hitPoint.z);		
 	}
 	// if t0 was invalid, try t1
-	if (t1 > 0.0 && t1 < t)
-	{
-		hitPoint = ro + (rd * t1);
-		if (hitPoint.y <= -1.0)
-		{
-			t = t1;
-			normal = vec3(hitPoint.x, hitPoint.y + 1.0, hitPoint.z);
-		}	
+	hitPoint = ro + (rd * t1);
+	if (t1 > 0.0 && t1 < t && hitPoint.y < ConeCaps.x)
+	{	
+		t = t1;
+		normal = vec3(hitPoint.x, hitPoint.y + endCapsYDistFromCenter, hitPoint.z);		
 	}
 	
 	return t;
