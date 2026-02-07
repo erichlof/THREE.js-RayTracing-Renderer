@@ -378,7 +378,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 	// transform ray into Unit coneCapsule's object space
 	rObjOrigin = vec3( uConeCapsuleInvMatrix * vec4(rayOrigin, 1.0) );
 	rObjDirection = vec3( uConeCapsuleInvMatrix * vec4(rayDirection, 0.0) );
-	d = UnitConeCapsuleIntersect(0.4, rObjOrigin, rObjDirection, normal);
+	d = UnitConeCapsuleIntersect(0.4, 1.0, rObjOrigin, rObjDirection, normal);
 	if (d < t)
 	{
 		t = d;
