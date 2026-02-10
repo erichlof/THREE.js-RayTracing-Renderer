@@ -690,8 +690,7 @@ float UnitCappedCylinderIntersect( vec3 ro, vec3 rd, out vec3 n )
 THREE.ShaderChunk[ 'raytracing_unit_cone_intersect' ] = `
 
 float UnitConeIntersect( float apexRadius, vec3 ro, vec3 rd, out vec3 n )
-{
-	
+{	
 	vec3 hitPoint;
 	float t0, t1;
 	float k = 1.0 - apexRadius; // k is the inverse of the cone's opening width (apex radius)
@@ -1377,13 +1376,13 @@ void Cylinder_CSG_Intersect( vec3 ro, vec3 rd, out float t0, out float t1, out v
 	}
 	
 	hit = ro + (rd * d0);
-	if ((hit.x * hit.x) + (hit.z * hit.z) <= 1.0) // unit radius disk
+	if (dot(hit.xz, hit.xz) <= 1.0) // unit radius disk
 	{
 		t0 = d0;
 		n0 = dn0;
 	}
 	hit = ro + (rd * d1);
-	if ((hit.x * hit.x) + (hit.z * hit.z) <= 1.0) // unit radius disk
+	if (dot(hit.xz, hit.xz) <= 1.0) // unit radius disk
 	{
 		t1 = d1;
 		n1 = dn1;
@@ -1448,7 +1447,7 @@ void Cone_CSG_Intersect( float k, vec3 ro, vec3 rd, out float t0, out float t1, 
 		dr1 = (1.0 - k) * (1.0 - k);// top cap's size is relative to k
 	}
 	hit = ro + (rd * d0);
-	if ((hit.x * hit.x) + (hit.z * hit.z) <= dr0)
+	if (dot(hit.xz, hit.xz) <= dr0)
 	{
 		t1 = t0;
 		n1 = n0;
@@ -1456,7 +1455,7 @@ void Cone_CSG_Intersect( float k, vec3 ro, vec3 rd, out float t0, out float t1, 
 		n0 = dn0;
 	}
 	hit = ro + (rd * d1);
-	if ((hit.x * hit.x) + (hit.z * hit.z) <= dr1)
+	if (dot(hit.xz, hit.xz) <= dr1)
 	{
 		t1 = d1;
 		n1 = dn1;
@@ -1731,9 +1730,9 @@ void Hyperboloid1Sheet_CSG_Intersect( float k, vec3 ro, vec3 rd, out float t0, o
 	
 	// conservative range of k: 1 to 100
 	float j = k - 1.0;
-	float a = (k * rd.x * rd.x) + (k * rd.z * rd.z) - (j * rd.y * rd.y);
-	float b = 2.0 * ((k * rd.x * ro.x) + (k * rd.z * ro.z) - (j * rd.y * ro.y));
-	float c = ((k * ro.x * ro.x) + (k * ro.z * ro.z) - (j * ro.y * ro.y)) - 1.0;
+	float a = k * dot(rd.xz, rd.xz) - (j * rd.y * rd.y);
+	float b = 2.0 * (k * dot(rd.xz, ro.xz) - (j * rd.y * ro.y));
+	float c = k * dot(ro.xz, ro.xz) - (j * ro.y * ro.y) - 1.0;
 	solveQuadratic(a, b, c, t0, t1);
 	hit = ro + (rd * t0);
 	t0 = (hit.y > 1.0 || hit.y < 0.0) ? 0.0 : t0; // invalidate t0 if it's outside unit radius bounds of top half
@@ -1801,9 +1800,9 @@ void Hyperboloid2Sheets_CSG_Intersect( float k, vec3 ro, vec3 rd, out float t0, 
 	
 	// conservative range of k: 1 to 100
 	float j = k + 1.0;
-	float a = (-k * rd.x * rd.x) - (k * rd.z * rd.z) + (j * rd.y * rd.y);
-	float b = 2.0 * ((-k * rd.x * ro.x) - (k * rd.z * ro.z) + (j * rd.y * ro.y));
-	float c = ((-k * ro.x * ro.x) - (k * ro.z * ro.z) + (j * ro.y * ro.y)) - 1.0;
+	float a = -k * dot(rd.xz, rd.xz) + (j * rd.y * rd.y);
+	float b = 2.0 * (-k * dot(rd.xz, ro.xz) + (j * rd.y * ro.y));
+	float c = (-k * dot(ro.xz, ro.xz) + (j * ro.y * ro.y)) - 1.0;
 	solveQuadratic(a, b, c, t0, t1);
 	hit = ro + (rd * t0);
 	t0 = (hit.y > 1.0 || hit.y < 0.0) ? 0.0 : t0; // invalidate t0 if it's outside unit radius bounds of top half
@@ -1821,7 +1820,7 @@ void Hyperboloid2Sheets_CSG_Intersect( float k, vec3 ro, vec3 rd, out float t0, 
 	// intersect unit-radius disk located at top opening of unit hyperboloid shape
 	d = (ro.y - 1.0) / -rd.y;
 	hit = ro + (rd * d);
-	if ((hit.x * hit.x) + (hit.z * hit.z) <= 1.0) // disk with unit radius
+	if (dot(hit.xz, hit.xz) <= 1.0) // disk with unit radius
 	{
 		if (rd.y > 0.0)
 		{
