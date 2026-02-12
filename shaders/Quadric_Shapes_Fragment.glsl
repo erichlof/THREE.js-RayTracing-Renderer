@@ -104,6 +104,8 @@ UnitConeCapsule coneCapsules[N_CONE_CAPSULES];
 
 #include <raytracing_unit_capped_cone_intersect>
 
+//#include <raytracing_unit_solid_angle_intersect>
+
 #include <raytracing_unit_paraboloid_intersect>
 
 #include <raytracing_unit_capped_paraboloid_intersect>
@@ -416,7 +418,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 	// transform ray into Unit Triangular Wedge's object space
 	rObjOrigin = vec3( uWedgeInvMatrix * vec4(rayOrigin, 1.0) );
 	rObjDirection = vec3( uWedgeInvMatrix * vec4(rayDirection, 0.0) );
-	d = UnitTriangularWedgeIntersect( rObjOrigin, rObjDirection, normal );
+	d = UnitTriangularWedgeIntersect( rObjOrigin, rObjDirection, vec4(vec3(0.7071067811865475, 0.7071067811865475, 0), 0), normal );
 	if (d < t)
 	{
 		t = d;
@@ -424,19 +426,7 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 		vec3 wedgeScale = vec3(4,4,4);	
 		intersectionNormal = transpose(mat3(uWedgeInvMatrix)) * normal;
 		intersectionMaterial = wedges[0].material;
-
-		     if (normal.x > 0.0) 
-			intersectionUV = (vec2(-intersectionPoint.z, -intersectionPoint.y * 1.5) * 0.5 + 0.5) * vec2(wedgeScale.z, wedgeScale.y);
-		else if (normal.z > 0.0)
-			intersectionUV = (vec2( intersectionPoint.x, -intersectionPoint.y) * 0.5 + 0.5) * vec2(wedgeScale.x, wedgeScale.y);
-		else if (normal.z < 0.0) 
-			intersectionUV = (vec2(-intersectionPoint.x, -intersectionPoint.y) * 0.5 + 0.5) * vec2(wedgeScale.x, wedgeScale.y);
-		else if (normal.y < 0.0) 
-			intersectionUV = (vec2( intersectionPoint.x, -intersectionPoint.z) * 0.5 + 0.5) * vec2(wedgeScale.x, wedgeScale.z);
-		else // (normal.x < 0.0)
-			intersectionUV = (vec2( intersectionPoint.z, -intersectionPoint.y) * 0.5 + 0.5) * vec2(wedgeScale.z, wedgeScale.y);
-
-		intersectionUV *= wedges[0].uvScale;
+		intersectionUV = calcUnitBoxUV(intersectionPoint, normal, wedgeScale) * wedges[0].uvScale;
 		intersectionShapeIsClosed = TRUE;
 	}
 
