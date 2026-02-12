@@ -204,17 +204,17 @@ vec2 calcUnitCylinderUV(vec3 pointOnUnitCylinder)
 vec2 calcUnitBoxUV(vec3 pointOnUnitBox, vec3 normal, vec3 boxScale)
 { // this is a simple tri-planar mapping: if the box normal points to the right or left, use z and y as uv coordinates.
 // If normal points up or down, use x and z as uv coordinates. If normal points forward and backward, use x and y as uv coordinates.
-	     if (normal.z > 0.0)
+	     if (normal.z >  0.5)
 		return (vec2( pointOnUnitBox.x, -pointOnUnitBox.y) * 0.5 + 0.5) * vec2(boxScale.x, boxScale.y);
-	else if (normal.z < 0.0) 
+	else if (normal.z < -0.5) 
 		return (vec2(-pointOnUnitBox.x, -pointOnUnitBox.y) * 0.5 + 0.5) * vec2(boxScale.x, boxScale.y);
-	else if (normal.y > 0.0) 
+	else if (normal.y >  0.5) 
 		return (vec2( pointOnUnitBox.x,  pointOnUnitBox.z) * 0.5 + 0.5) * vec2(boxScale.x, boxScale.z);
-	else if (normal.y < 0.0) 
+	else if (normal.y < -0.5) 
 		return (vec2( pointOnUnitBox.x, -pointOnUnitBox.z) * 0.5 + 0.5) * vec2(boxScale.x, boxScale.z);
-	else if (normal.x > 0.0) 
+	else if (normal.x >  0.5) 
 		return (vec2(-pointOnUnitBox.z, -pointOnUnitBox.y) * 0.5 + 0.5) * vec2(boxScale.z, boxScale.y);
-	else // (normal.x < 0.0)
+	else// if (normal.x < -0.5)
 		return (vec2( pointOnUnitBox.z, -pointOnUnitBox.y) * 0.5 + 0.5) * vec2(boxScale.z, boxScale.y);
 }
 
@@ -696,28 +696,28 @@ float UnitConeIntersect( float apexRadius, vec3 ro, vec3 rd, out vec3 n )
 	float k = 1.0 - apexRadius; // k is the inverse of the cone's opening width (apex radius)
 	// valid range for k: 0.01 to 1.0 (a value of 1.0 makes a cone with a sharp, pointed apex)
 	k = clamp(k, 0.01, 1.0);
-	
 	float j = 1.0 / k;
-	// the '(ro.y - h)' parts below truncate the top half of the double-cone, leaving a single cone with apex at top
-	float h = j * 2.0 - 1.0;	// (k * 0.25) makes the normal cone's bottom circular base have a unit radius of 1.0
+	float h = j * 2.0 - 1.0;
+	ro.y -= h;// this truncates the top half of the double-cone, leaving a single cone with apex at top
+					// (k * 0.25) makes the normal cone's bottom circular base have a unit radius of 1.0
 	float a = j * dot(rd.xz, rd.xz) - ((k * 0.25) * rd.y * rd.y);
-    	float b = 2.0 * (j * dot(rd.xz, ro.xz) - ((k * 0.25) * rd.y * (ro.y - h)));
-    	float c = j * dot(ro.xz, ro.xz) - ((k * 0.25) * (ro.y - h) * (ro.y - h));
+    	float b = 2.0 * ( j * dot(rd.xz, ro.xz) - ((k * 0.25) * rd.y * ro.y) );
+    	float c = j * dot(ro.xz, ro.xz) - ((k * 0.25) * ro.y * ro.y);
 	solveQuadratic(a, b, c, t0, t1);
 	
 	// first, try t0
 	hitPoint = ro + (rd * t0);
-	if (t0 > 0.0 && abs(hitPoint.y) <= 1.0)
+	if (t0 > 0.0 && abs(hitPoint.y + h) <= 1.0)
 	{
-		n = vec3(j * hitPoint.x, (k * 0.25) * (h - hitPoint.y), j * hitPoint.z);
+		n = vec3(j * hitPoint.x, (k * 0.25) * (-hitPoint.y), j * hitPoint.z);
 		n = dot(rd, n) < 0.0 ? n : -n;
 		return t0;
 	}
 	// if t0 was invalid, try t1
 	hitPoint = ro + (rd * t1);
-	if (t1 > 0.0 && abs(hitPoint.y) <= 1.0)
+	if (t1 > 0.0 && abs(hitPoint.y + h) <= 1.0)
 	{
-		n = vec3(j * hitPoint.x, (k * 0.25) * (h - hitPoint.y), j * hitPoint.z);
+		n = vec3(j * hitPoint.x, (k * 0.25) * (-hitPoint.y), j * hitPoint.z);
 		n = dot(rd, n) < 0.0 ? n : -n;
 		return t1;
 	}
@@ -794,6 +794,64 @@ float UnitCappedConeIntersect( float apexRadius, vec3 ro, vec3 rd, out vec3 n )
 	}
 
 	n = dot(rd, n) < 0.0 ? n : -n;
+	return t;
+}
+`;
+
+THREE.ShaderChunk[ 'raytracing_unit_solid_angle_intersect' ] = `
+
+float UnitSolidAngleIntersect( vec3 ro, vec3 rd, out vec3 n )
+{
+	vec3 hitPoint;
+	float t0, t1;
+	float t = INFINITY;
+
+	// first, intersect spherical cap at base of cone
+	ro -= vec3(0,1,0);
+	float a = dot(rd, rd);
+	float b = 2.0 * dot(rd, ro);
+	float c = dot(ro, ro) - (2.0*2.0);
+	solveQuadratic(a, b, c, t0, t1);
+
+	hitPoint = ro + rd * t0;
+	if (t0 > 0.0 && hitPoint.y <= -1.789) // .633 for 0.5 k, .42 for 1.0 k, .789 for 0.25 k
+	{
+		t = t0;
+		n = hitPoint;
+	}
+	hitPoint = ro + rd * t1;
+	if (t1 > 0.0 && t1 < t && hitPoint.y <= -1.789)
+	{
+		t = t1;
+		n = hitPoint;
+	}
+	ro += vec3(0,1,0);
+
+
+	// now intersect cone with height radius of +1 / -1, and with unit-radius circular base opening 
+	float k = 0.25;
+	// the '(ro.y - h)' parts below truncate the top half of the double-cone, leaving a single cone with apex at top
+	float h = 1.0;	      // 0.25 makes the circular base of cone end up as radius of 1, unit length
+	a = dot(rd.xz, rd.xz) - (k * rd.y * rd.y);
+	b = 2.0 * (dot(rd.xz, ro.xz) - (k * rd.y * (ro.y - h)));
+	c = dot(ro.xz, ro.xz) - (k * (ro.y - h) * (ro.y - h));
+	solveQuadratic(a, b, c, t0, t1);
+	
+	// first, try t0
+	hitPoint = ro + rd * t0;
+	if (t0 > 0.0 && t0 < t && hitPoint.y >= -0.789 && hitPoint.y < 1.0)
+	{
+		t = t0;
+		n = vec3(hitPoint.x, (h - hitPoint.y) * k, hitPoint.z);
+	}
+	// if t0 was invalid, try t1
+	hitPoint = ro + rd * t1;
+	if (t1 > 0.0 && t1 < t && hitPoint.y >= -0.789 && hitPoint.y < 1.0)
+	{
+		t = t1;
+		n = vec3(hitPoint.x, (h - hitPoint.y) * k, hitPoint.z);
+	}
+
 	return t;
 }
 `;
@@ -1164,15 +1222,9 @@ float UnitBoxIntersect( vec3 ro, vec3 rd )
 THREE.ShaderChunk[ 'raytracing_unit_triangular_wedge_intersect' ] = `
 
 //------------------------------------------------------------------------------------------------------------
-float UnitTriangularWedgeIntersect( vec3 ro, vec3 rd, out vec3 n )
+float UnitTriangularWedgeIntersect( vec3 ro, vec3 rd, vec4 clippingPlane, out vec3 n )
 //------------------------------------------------------------------------------------------------------------
 {
-	vec3 n0, n1;
-	float t;
-	float t0 = -INFINITY;
-	float t1 = INFINITY;
-	float plane_dot_rayDir;
-
 	// a triangular wedge(prism) looks like:
 	//    __
 	//   |\ \
@@ -1181,91 +1233,46 @@ float UnitTriangularWedgeIntersect( vec3 ro, vec3 rd, out vec3 n )
 	//   |   \ \
 	//   -------
 
-	// left square side of wedge
-	plane_dot_rayDir = dot(vec3(-1,0,0), rd);
-	t = (-dot(vec3(-1,0,0), ro) + 1.0) / plane_dot_rayDir;
-	if (plane_dot_rayDir < 0.0 && t > t0)
-	{
-		t0 = t;
-		n0 = vec3(-1,0,0);
-	}	
-	if (plane_dot_rayDir > 0.0 && t < t1)
-	{
-		t1 = t;
-		n1 = vec3(-1,0,0);
-	}
+	//   NOTE: clippingPlane normal (.xyz) is assumed to be normalized (unit length)
+	vec3 angledFaceNormal = clippingPlane.xyz;
+	vec3 hitPoint;
+	float t = INFINITY;
 
-	// front triangular face of wedge
-	plane_dot_rayDir = dot(vec3(0,0,1), rd);
-	t = (-dot(vec3(0,0,1), ro) + 1.0) / plane_dot_rayDir;
-	if (plane_dot_rayDir < 0.0 && t > t0)
-	{
-		t0 = t;
-		n0 = vec3(0,0,1);
-	}	
-	if (plane_dot_rayDir > 0.0 && t < t1)
-	{
-		t1 = t;
-		n1 = vec3(0,0,1);
-	}
-
-	// back triangular face of wedge
-	plane_dot_rayDir = dot(vec3(0,0,-1), rd);
-	t = (-dot(vec3(0,0,-1), ro) + 1.0) / plane_dot_rayDir;
-	if (plane_dot_rayDir < 0.0 && t > t0)
-	{
-		t0 = t;
-		n0 = vec3(0,0,-1);
-	}	
-	if (plane_dot_rayDir > 0.0 && t < t1)
-	{
-		t1 = t;
-		n1 = vec3(0,0,-1);
-	}
-
-	// bottom square base of wedge
-	plane_dot_rayDir = dot(vec3(0,-1,0), rd);
-	t = (-dot(vec3(0,-1,0), ro) + 1.0) / plane_dot_rayDir;
-	if (plane_dot_rayDir < 0.0 && t > t0)
-	{
-		t0 = t;
-		n0 = vec3(0,-1,0);
-	}	
-	if (plane_dot_rayDir > 0.0 && t < t1)
-	{
-		t1 = t;
-		n1 = vec3(0,-1,0);
-	}
-
-	// angled square right side of wedge
-	vec3 angledFaceNormal = vec3(0.7071067811865475, 0.7071067811865475, 0);
-	plane_dot_rayDir = dot(angledFaceNormal, rd);
-	t = (-dot(angledFaceNormal, ro) + 0.0) / plane_dot_rayDir;
-	if (plane_dot_rayDir < 0.0 && t > t0)
-	{
-		t0 = t;
-		n0 = angledFaceNormal;
-	}	
-	if (plane_dot_rayDir > 0.0 && t < t1)
-	{
-		t1 = t;
-		n1 = angledFaceNormal;
-	}
-
-	if (t0 > t1) // check for invalid t0/t1 intersection pair
+	// first, intersect a unit box
+	vec3 invDir = 1.0 / rd;
+	vec3 near = (vec3(-1) - ro) * invDir; // unit radius box: vec3(-1,-1,-1) min corner
+	vec3 far  = (vec3( 1) - ro) * invDir;  // unit radius box: vec3(+1,+1,+1) max corner
+	
+	vec3 tmin = min(near, far);
+	vec3 tmax = max(near, far);
+	float t0 = max( max(tmin.x, tmin.y), tmin.z);
+	float t1 = min( min(tmax.x, tmax.y), tmax.z);
+	
+	if (t0 > t1) // test for invalid intersection
 		return INFINITY;
-	if (t0 > 0.0)
+
+	hitPoint = ro + rd * t1;
+	if (t1 > 0.0 && (dot(hitPoint, angledFaceNormal) - clippingPlane.w) < 0.0)
 	{
-		n = n0;
-		return t0;
+		t = t1;
+		n = -sign(rd) * step(tmax, tmax.yzx) * step(tmax, tmax.zxy);
 	}
-	if (t1 > 0.0)
+	hitPoint = ro + rd * t0;
+	if (t0 > 0.0 && (dot(hitPoint, angledFaceNormal) - clippingPlane.w) < 0.0)
 	{
-		n = n1;
-		return t1;
+		t = t0;
+		n = -sign(rd) * step(tmin.yzx, tmin) * step(tmin.zxy, tmin);
 	}
 
-	return INFINITY;
+	// now intersect angled square right side of wedge
+	float d = (-dot(angledFaceNormal, ro) + clippingPlane.w) / dot(angledFaceNormal, rd);
+	if (d > 0.0 && d < t && d > t0 && d < t1)
+	{
+		t = d;
+		n = angledFaceNormal;
+	}
+	
+	return t;
 }
 
 /*
