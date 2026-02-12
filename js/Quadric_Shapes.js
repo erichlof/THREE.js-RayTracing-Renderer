@@ -378,7 +378,7 @@ function initSceneData()
 
 	coneCapsule.transform.scale.set(1.5, 1.5, 1.5);
 	coneCapsule.transform.position.set(14, 3, -2);
-	//coneCapsule.transform.rotation.set(0, 0, Math.PI);
+	//coneCapsule.transform.rotation.set(0, 0, Math.PI * 0.5);
 	// after specifying any desired transforms (scale, position, rotation), we must call updateMatrixWorld() to actually fill in the shape's matrix with these new values
 	coneCapsule.transform.updateMatrixWorld(true); // 'true' forces a matrix update now, rather than waiting for Three.js' 'renderer.render()' call which happens last
 
