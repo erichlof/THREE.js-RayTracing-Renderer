@@ -19,7 +19,7 @@ let screenCopyMaterial, screenCopyMesh;
 let screenOutputMaterial, screenOutputMesh;
 let rayTracingRenderTarget, screenCopyRenderTarget;
 let orthoCamera, worldCamera;
-let renderer, clock;
+let renderer, clockTimer;
 let frameTime, elapsedTime;
 let sceneIsDynamic = false;
 let cameraFlightSpeed = 60;
@@ -528,7 +528,7 @@ function initTHREEjs()
 	container.appendChild(stats.domElement);
 
 
-	clock = new THREE.Clock();
+	clockTimer = new THREE.Timer();
 
 	rayTracingScene = new THREE.Scene();
 	screenCopyScene = new THREE.Scene();
@@ -735,9 +735,10 @@ function initTHREEjs()
 function animate()
 {
 
-	frameTime = clock.getDelta();
-
-	elapsedTime = clock.getElapsedTime() % 1000;
+	// update clock
+	clockTimer.update();
+	frameTime = clockTimer.getDelta();
+	elapsedTime = clockTimer.getElapsed() % 1000;
 
 	// reset flags
 	cameraIsMoving = false;
