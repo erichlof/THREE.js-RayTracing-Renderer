@@ -7,6 +7,8 @@ precision highp sampler2D;
 uniform sampler2D uMarbleTexture;
 uniform sampler2D uTriangleTexture;
 uniform sampler2D uAABBTexture;
+uniform sampler2D uShapes_DataTexture;
+uniform sampler2D uShapes_AABB_DataTexture;
 uniform mat4 uTetrahedronInvMatrix;
 uniform mat4 uCubeInvMatrix;
 uniform mat4 uOctahedronInvMatrix;
@@ -22,8 +24,6 @@ uniform vec3 uMaterialColor;
 #define INV_TEXTURE_WIDTH 0.00048828125
 
 #define N_RECTANGLES 1
-#define N_BOXES 12
-#define N_CYLINDERS 18
 
 
 vec3 rayOrigin, rayDirection;
@@ -31,17 +31,13 @@ vec3 rayOrigin, rayDirection;
 vec3 intersectionNormal;
 vec2 intersectionUV;
 int intersectionTextureID;
-int intersectionShapeIsClosed;
 
 struct Material { int type; int isCheckered; vec3 color; vec3 color2; float metalness; float roughness; float IoR; int textureID; };
 struct Rectangle { vec3 position; vec3 normal; vec3 vectorU; vec3 vectorV; float radiusU; float radiusV; vec2 uvScale; Material material; };
-struct Box { vec3 minCorner; vec3 maxCorner; vec2 uvScale; Material material; };
-struct Cylinder { float widthRadius; float heightRadius; vec3 position; vec2 uvScale; Material material; };
 
 Material intersectionMaterial;
 Rectangle rectangles[N_RECTANGLES];
-Box boxes[N_BOXES];
-Cylinder cylinders[N_CYLINDERS];
+
 
 
 #include <raytracing_core_functions>
@@ -50,7 +46,9 @@ Cylinder cylinders[N_CYLINDERS];
 
 #include <raytracing_box_intersect>
 
-#include <raytracing_cylinder_intersect>
+#include <raytracing_unit_box_intersect>
+
+#include <raytracing_unit_cylinder_intersect>
 
 #include <raytracing_convexpolyhedron_intersect>
 
@@ -65,17 +63,18 @@ vec4 dodecahedron_planes[12];
 vec4 icosahedron_planes[20];
 vec4 planes[20];
 
-vec2 stackLevels[28];
 
-//vec4 boxNodeData0 corresponds to .x = idTriangle,  .y = aabbMin.x, .z = aabbMin.y, .w = aabbMin.z
-//vec4 boxNodeData1 corresponds to .x = idRightChild .y = aabbMax.x, .z = aabbMax.y, .w = aabbMax.z
+float stackNodeIDs[32];
+
+//vec4 boxNodeData0 corresponds to: .x = aabbMin.x, .y = aabbMin.y, .z =      aabbMin.z, .w = aabbMax.x,
+//vec4 boxNodeData1 corresponds to: .x = aabbMax.y, .y = aabbMax.z, .z = primitiveCount, .w = leafOrChild_ID
 
 void GetBoxNodeData(const in float i, inout vec4 boxNodeData0, inout vec4 boxNodeData1)
 {
 	// each bounding box's data is encoded in 2 rgba(or xyzw) texture slots 
 	float ix2 = i * 2.0;
-	// (ix2 + 0.0) corresponds to .x = idTriangle,  .y = aabbMin.x, .z = aabbMin.y, .w = aabbMin.z 
-	// (ix2 + 1.0) corresponds to .x = idRightChild .y = aabbMax.x, .z = aabbMax.y, .w = aabbMax.z 
+	// (ix2 + 0.0) corresponds to: .x = aabbMin.x, .y = aabbMin.y, .z =      aabbMin.z, .w = aabbMax.x,
+	// (ix2 + 1.0) corresponds to: .x = aabbMax.y, .y = aabbMax.z, .z = primitiveCount, .w = leafOrChild_ID 
 
 	ivec2 uv0 = ivec2( mod(ix2 + 0.0, 2048.0), (ix2 + 0.0) * INV_TEXTURE_WIDTH ); // data0
 	ivec2 uv1 = ivec2( mod(ix2 + 1.0, 2048.0), (ix2 + 1.0) * INV_TEXTURE_WIDTH ); // data1
@@ -84,14 +83,208 @@ void GetBoxNodeData(const in float i, inout vec4 boxNodeData0, inout vec4 boxNod
 	boxNodeData1 = texelFetch(uAABBTexture, uv1, 0);
 }
 
+//vec4 boxNodeData0 corresponds to: .x = aabbMin.x, .y = aabbMin.y, .z =      aabbMin.z, .w = aabbMax.x,
+//vec4 boxNodeData1 corresponds to: .x = aabbMax.y, .y = aabbMax.z, .z = primitiveCount, .w = leafOrChild_ID
+
+void GetShapesBoxNodeData(const in float i, inout vec4 boxNodeData0, inout vec4 boxNodeData1)
+{
+	// each bounding box's data is encoded in 2 rgba(or xyzw) texture slots 
+	float ix2 = i * 2.0;
+	// (ix2 + 0.0) corresponds to: .x = aabbMin.x, .y = aabbMin.y, .z =      aabbMin.z, .w = aabbMax.x,
+	// (ix2 + 1.0) corresponds to: .x = aabbMax.y, .y = aabbMax.z, .z = primitiveCount, .w = leafOrChild_ID 
+
+	ivec2 uv0 = ivec2( mod(ix2 + 0.0, 2048.0), (ix2 + 0.0) * INV_TEXTURE_WIDTH ); // data0
+	ivec2 uv1 = ivec2( mod(ix2 + 1.0, 2048.0), (ix2 + 1.0) * INV_TEXTURE_WIDTH ); // data1
+	
+	boxNodeData0 = texelFetch(uShapes_AABB_DataTexture, uv0, 0);
+	boxNodeData1 = texelFetch(uShapes_AABB_DataTexture, uv1, 0);
+}
+/* 
+//------------------------------------------------------------------------------------------------------------
+float ConvexPolyhedron_TetrahedronIntersect( vec3 ro, vec3 rd, out vec3 n, vec4 planes[4] )
+//------------------------------------------------------------------------------------------------------------
+{
+	vec3 n0, n1;
+	float t;
+	float t0 = -INFINITY;
+	float t1 = INFINITY;
+	float plane_dot_rayDir;
+	
+	for (int i = 0; i < 4; i++)
+	{
+		plane_dot_rayDir = dot(planes[i].xyz, rd);
+		
+		t = (-dot(planes[i].xyz, ro) + planes[i].w) / plane_dot_rayDir;
+
+		if (plane_dot_rayDir < 0.0 && t > t0)
+		{
+			t0 = t;
+			n0 = planes[i].xyz;
+		}	
+		if (plane_dot_rayDir > 0.0 && t < t1)
+		{
+			t1 = t;
+			n1 = planes[i].xyz;
+		}	
+	}
+
+	if (t0 > t1) // check for invalid t0/t1 intersection pair
+		return INFINITY;
+	if (t0 > 0.0)
+	{
+		n = n0;
+		return t0;
+	}
+	if (t1 > 0.0)
+	{
+		n = n1;
+		return t1;
+	}
+
+	return INFINITY;
+}
+
+//------------------------------------------------------------------------------------------------------------
+float ConvexPolyhedron_OctahedronIntersect( vec3 ro, vec3 rd, out vec3 n, vec4 planes[8] )
+//------------------------------------------------------------------------------------------------------------
+{
+	vec3 n0, n1;
+	float t;
+	float t0 = -INFINITY;
+	float t1 = INFINITY;
+	float plane_dot_rayDir;
+	
+	for (int i = 0; i < 8; i++)
+	{
+		plane_dot_rayDir = dot(planes[i].xyz, rd);
+		
+		t = (-dot(planes[i].xyz, ro) + planes[i].w) / plane_dot_rayDir;
+
+		if (plane_dot_rayDir < 0.0 && t > t0)
+		{
+			t0 = t;
+			n0 = planes[i].xyz;
+		}	
+		if (plane_dot_rayDir > 0.0 && t < t1)
+		{
+			t1 = t;
+			n1 = planes[i].xyz;
+		}	
+	}
+
+	if (t0 > t1) // check for invalid t0/t1 intersection pair
+		return INFINITY;
+	if (t0 > 0.0)
+	{
+		n = n0;
+		return t0;
+	}
+	if (t1 > 0.0)
+	{
+		n = n1;
+		return t1;
+	}
+
+	return INFINITY;
+}
+
+//------------------------------------------------------------------------------------------------------------
+float ConvexPolyhedron_DodecahedronIntersect( vec3 ro, vec3 rd, out vec3 n, vec4 planes[12] )
+//------------------------------------------------------------------------------------------------------------
+{
+	vec3 n0, n1;
+	float t;
+	float t0 = -INFINITY;
+	float t1 = INFINITY;
+	float plane_dot_rayDir;
+	
+	for (int i = 0; i < 12; i++)
+	{
+		plane_dot_rayDir = dot(planes[i].xyz, rd);
+		
+		t = (-dot(planes[i].xyz, ro) + planes[i].w) / plane_dot_rayDir;
+
+		if (plane_dot_rayDir < 0.0 && t > t0)
+		{
+			t0 = t;
+			n0 = planes[i].xyz;
+		}	
+		if (plane_dot_rayDir > 0.0 && t < t1)
+		{
+			t1 = t;
+			n1 = planes[i].xyz;
+		}	
+	}
+
+	if (t0 > t1) // check for invalid t0/t1 intersection pair
+		return INFINITY;
+	if (t0 > 0.0)
+	{
+		n = n0;
+		return t0;
+	}
+	if (t1 > 0.0)
+	{
+		n = n1;
+		return t1;
+	}
+
+	return INFINITY;
+}
+
+//------------------------------------------------------------------------------------------------------------
+float ConvexPolyhedron_IcosahedronIntersect( vec3 ro, vec3 rd, out vec3 n, vec4 planes[20] )
+//------------------------------------------------------------------------------------------------------------
+{
+	vec3 n0, n1;
+	float t;
+	float t0 = -INFINITY;
+	float t1 = INFINITY;
+	float plane_dot_rayDir;
+	
+	for (int i = 0; i < 20; i++)
+	{
+		plane_dot_rayDir = dot(planes[i].xyz, rd);
+		
+		t = (-dot(planes[i].xyz, ro) + planes[i].w) / plane_dot_rayDir;
+
+		if (plane_dot_rayDir < 0.0 && t > t0)
+		{
+			t0 = t;
+			n0 = planes[i].xyz;
+		}	
+		if (plane_dot_rayDir > 0.0 && t < t1)
+		{
+			t1 = t;
+			n1 = planes[i].xyz;
+		}	
+	}
+
+	if (t0 > t1) // check for invalid t0/t1 intersection pair
+		return INFINITY;
+	if (t0 > 0.0)
+	{
+		n = n0;
+		return t0;
+	}
+	if (t1 > 0.0)
+	{
+		n = n1;
+		return t1;
+	}
+
+	return INFINITY;
+}
+ */
 
 //---------------------------------------------------------------------------------------
 float SceneIntersect( int isShadowRay )
 //---------------------------------------------------------------------------------------
 {
-	
+	Material marbleMaterial = Material(DIFFUSE, FALSE, vec3(0.3), vec3(0.0, 0.0, 0.0), 0.0, 1.0, 0.0, 0);
 	Material diffuseMetalMaterial = Material(METAL, FALSE, uMaterialColor * 0.42, vec3(1.000, 0.766, 0.336), 1.0, 0.0, 0.0, -1);
-
+	
+	mat4 invTransformMatrix, hitMatrix;
 	vec4 currentBoxNodeData0, nodeAData0, nodeBData0, tmpNodeData0;
 	vec4 currentBoxNodeData1, nodeAData1, nodeBData1, tmpNodeData1;
 	vec4 vd0, vd1, vd2, vd3, vd4, vd5, vd6, vd7;
@@ -102,14 +295,16 @@ float SceneIntersect( int isShadowRay )
 	vec3 inverseDir;
 	vec3 normalizedVec, smallCylinderPos;
 
-	vec2 currentStackData, stackDataA, stackDataB, tmpStackData;
 	ivec2 uv0, uv1, uv2, uv3, uv4, uv5, uv6, uv7;
 
+	float stackNodeID_A, stackNodeID_B, tmpNodeID;
+	float stackNodeA_t, stackNodeB_t, tmpNode_t;
         float d;
 	float t = INFINITY;
 	float u, v;
 	float stackptr = 0.0;
 	float id = 0.0;
+	float shapeID = 0.0;
 	float tu, tv;
 	float triangleID = 0.0;
 	float triangleU = 0.0;
@@ -125,8 +320,9 @@ float SceneIntersect( int isShadowRay )
 	float theta, phi;
 
 	int isRayExiting = FALSE;
-	int skip = FALSE;
+	int popNextNodeOffStack = TRUE;
 	int triangleLookupNeeded = FALSE;
+	int shapeLookupNeeded = FALSE;
 
 	/* 
 	// When shadow rays are trying to intersect a small point light source, a tiny box makes a better shape to try and hit
@@ -152,74 +348,73 @@ float SceneIntersect( int isShadowRay )
 	inverseDir = 1.0 / rObjDirection;
 
 	GetBoxNodeData(stackptr, currentBoxNodeData0, currentBoxNodeData1);
-	currentStackData = vec2(stackptr, BoundingBoxIntersect(currentBoxNodeData0.yzw, currentBoxNodeData1.yzw, rObjOrigin, inverseDir));
-	stackLevels[0] = currentStackData;
-	skip = (currentStackData.y < t) ? TRUE : FALSE;
+	d = BoundingBoxIntersect(currentBoxNodeData0.xyz, vec3(currentBoxNodeData0.w, currentBoxNodeData1.xy), rObjOrigin, inverseDir);
+	popNextNodeOffStack = (d < t) ? FALSE : TRUE;
 
 	while (true)
         {
-		if (skip == FALSE) 
+		if (popNextNodeOffStack == TRUE) 
                 {
-                        // decrease pointer by 1 (0.0 is root level, 27.0 is maximum depth)
+                        // decrease pointer by 1.0 (0.0 is root level, 31.0 is maximum depth)
                         if (--stackptr < 0.0) // went past the root level, terminate loop
                                 break;
-
-                        currentStackData = stackLevels[int(stackptr)];
-			
-			if (currentStackData.y >= t)
-				continue;
-			
-			GetBoxNodeData(currentStackData.x, currentBoxNodeData0, currentBoxNodeData1);
+			// pop the next node off the stack
+			GetBoxNodeData(stackNodeIDs[int(stackptr)], currentBoxNodeData0, currentBoxNodeData1);
                 }
-		skip = FALSE; // reset skip
+		popNextNodeOffStack = TRUE; // reset popNextNodeOffStack
 		
 
-		if (currentBoxNodeData0.x < 0.0) // < 0.0 signifies an inner node
+		if (currentBoxNodeData1.z == 0.0) // == 0.0 signifies an inner node
 		{
-			GetBoxNodeData(currentStackData.x + 1.0, nodeAData0, nodeAData1);
-			GetBoxNodeData(currentBoxNodeData1.x, nodeBData0, nodeBData1);
-			stackDataA = vec2(currentStackData.x + 1.0, BoundingBoxIntersect(nodeAData0.yzw, nodeAData1.yzw, rObjOrigin, inverseDir));
-			stackDataB = vec2(currentBoxNodeData1.x, BoundingBoxIntersect(nodeBData0.yzw, nodeBData1.yzw, rObjOrigin, inverseDir));
+			GetBoxNodeData(currentBoxNodeData1.w, nodeAData0, nodeAData1); // leftChild
+			GetBoxNodeData(currentBoxNodeData1.w + 1.0, nodeBData0, nodeBData1); // rightChild
+			stackNodeID_A = currentBoxNodeData1.w;
+			stackNodeID_B = currentBoxNodeData1.w + 1.0;
+			stackNodeA_t = BoundingBoxIntersect(nodeAData0.xyz, vec3(nodeAData0.w, nodeAData1.xy), rObjOrigin, inverseDir);
+			stackNodeB_t = BoundingBoxIntersect(nodeBData0.xyz, vec3(nodeBData0.w, nodeBData1.xy), rObjOrigin, inverseDir);
 			
-			// first sort the branch node data so that 'a' is the smallest
-			if (stackDataB.y < stackDataA.y)
+			// first, sort the children nodes data so that nodeA is the closer node
+			if (stackNodeB_t < stackNodeA_t)
 			{
-				tmpStackData = stackDataB;
-				stackDataB = stackDataA;
-				stackDataA = tmpStackData;
+				tmpNodeID = stackNodeID_A;
+				stackNodeID_A = stackNodeID_B;
+				stackNodeID_B = tmpNodeID;
 
-				tmpNodeData0 = nodeBData0;   tmpNodeData1 = nodeBData1;
-				nodeBData0   = nodeAData0;   nodeBData1   = nodeAData1;
-				nodeAData0   = tmpNodeData0; nodeAData1   = tmpNodeData1;
-			} // branch 'b' now has the larger rayT value of 'a' and 'b'
+				tmpNode_t = stackNodeA_t;
+				stackNodeA_t = stackNodeB_t;
+				stackNodeB_t = tmpNode_t;
 
-			if (stackDataB.y < t) // see if branch 'b' (the larger rayT) needs to be processed
+				tmpNodeData0 = nodeAData0;   tmpNodeData1 = nodeAData1;
+				nodeAData0   = nodeBData0;   nodeAData1   = nodeBData1;
+				nodeBData0   = tmpNodeData0; nodeBData1   = tmpNodeData1;
+			} // now it's guaranteed that nodeA is the closer node and nodeB is the farther node
+
+			if (stackNodeB_t < t) // see if the farther nodeB (the larger ray t) needs to be processed
 			{
-				currentStackData = stackDataB;
 				currentBoxNodeData0 = nodeBData0;
 				currentBoxNodeData1 = nodeBData1;
-				skip = TRUE; // this will prevent the stackptr from decreasing by 1
+				popNextNodeOffStack = FALSE; // this will prevent the stackptr from decreasing by 1
 			}
-			if (stackDataA.y < t) // see if branch 'a' (the smaller rayT) needs to be processed 
+			
+			if (stackNodeA_t < t) // see if the closer nodeA (the smaller ray t) needs to be processed 
 			{
-				if (skip == TRUE) // if larger branch 'b' needed to be processed also,
-					stackLevels[int(stackptr++)] = stackDataB; // cue larger branch 'b' for future round
-							// also, increase pointer by 1
-				
-				currentStackData = stackDataA;
-				currentBoxNodeData0 = nodeAData0; 
+				if (popNextNodeOffStack == FALSE) // if further nodeB needed to be visited also,
+					stackNodeIDs[int(stackptr++)] = stackNodeID_B; // push nodeB on stack for future round
+							// also, increase stackptr by 1
+				// since nodeA is always the closest node, set nodeA as the current node to be processed
+				currentBoxNodeData0 = nodeAData0;
 				currentBoxNodeData1 = nodeAData1;
-				skip = TRUE; // this will prevent the stackptr from decreasing by 1
+				popNextNodeOffStack = FALSE; // this will prevent the stackptr from decreasing by 1
 			}
 
 			continue;
-		} // end if (currentBoxNodeData0.x < 0.0) // inner node
+		} // end if (currentBoxNodeData1.z == 0.0) // inner node
 
 
 		// else this is a leaf
 
 		// each triangle's data is encoded in 8 rgba(or xyzw) texture slots
-		id = 8.0 * currentBoxNodeData0.x;
+		id = 8.0 * currentBoxNodeData1.w;
 
 		uv0 = ivec2( mod(id + 0.0, 2048.0), (id + 0.0) * INV_TEXTURE_WIDTH );
 		uv1 = ivec2( mod(id + 1.0, 2048.0), (id + 1.0) * INV_TEXTURE_WIDTH );
@@ -240,7 +435,7 @@ float SceneIntersect( int isShadowRay )
 			triangleLookupNeeded = TRUE;
 		}
 	      
-        } // end while (TRUE)
+        } // end while (true)
 
 
 	if (triangleLookupNeeded == TRUE)
@@ -275,6 +470,158 @@ float SceneIntersect( int isShadowRay )
 	} // end if (triangleLookupNeeded == TRUE)
 
 
+	// reset variables
+	inverseDir = 1.0 / rayDirection;
+	stackptr = 0.0;
+	GetShapesBoxNodeData(stackptr, currentBoxNodeData0, currentBoxNodeData1);
+	d = BoundingBoxIntersect(currentBoxNodeData0.xyz, vec3(currentBoxNodeData0.w, currentBoxNodeData1.xy), rayOrigin, inverseDir);
+	popNextNodeOffStack = (d < t) ? FALSE : TRUE;
+
+	while (true)
+        {
+		if (popNextNodeOffStack == TRUE) 
+                {
+                        // decrease pointer by 1.0 (0.0 is root level, 31.0 is maximum depth)
+                        if (--stackptr < 0.0) // went past the root level, terminate loop
+                                break;
+			// pop the next node off the stack
+			GetShapesBoxNodeData(stackNodeIDs[int(stackptr)], currentBoxNodeData0, currentBoxNodeData1);
+                }
+		popNextNodeOffStack = TRUE; // reset popNextNodeOffStack
+		
+
+		if (currentBoxNodeData1.z == 0.0) // == 0.0 signifies an inner node
+		{
+			GetShapesBoxNodeData(currentBoxNodeData1.w, nodeAData0, nodeAData1); // leftChild
+			GetShapesBoxNodeData(currentBoxNodeData1.w + 1.0, nodeBData0, nodeBData1); // rightChild
+			stackNodeID_A = currentBoxNodeData1.w;
+			stackNodeID_B = currentBoxNodeData1.w + 1.0;
+			stackNodeA_t = BoundingBoxIntersect(nodeAData0.xyz, vec3(nodeAData0.w, nodeAData1.xy), rayOrigin, inverseDir);
+			stackNodeB_t = BoundingBoxIntersect(nodeBData0.xyz, vec3(nodeBData0.w, nodeBData1.xy), rayOrigin, inverseDir);
+			
+			// first, sort the children nodes data so that nodeA is the closer node
+			if (stackNodeB_t < stackNodeA_t)
+			{
+				tmpNodeID = stackNodeID_A;
+				stackNodeID_A = stackNodeID_B;
+				stackNodeID_B = tmpNodeID;
+
+				tmpNode_t = stackNodeA_t;
+				stackNodeA_t = stackNodeB_t;
+				stackNodeB_t = tmpNode_t;
+
+				tmpNodeData0 = nodeAData0;   tmpNodeData1 = nodeAData1;
+				nodeAData0   = nodeBData0;   nodeAData1   = nodeBData1;
+				nodeBData0   = tmpNodeData0; nodeBData1   = tmpNodeData1;
+			} // now it's guaranteed that nodeA is the closer node and nodeB is the farther node
+
+			if (stackNodeB_t < t) // see if the farther nodeB (the larger ray t) needs to be processed
+			{
+				currentBoxNodeData0 = nodeBData0;
+				currentBoxNodeData1 = nodeBData1;
+				popNextNodeOffStack = FALSE; // this will prevent the stackptr from decreasing by 1
+			}
+			
+			if (stackNodeA_t < t) // see if the closer nodeA (the smaller ray t) needs to be processed 
+			{
+				if (popNextNodeOffStack == FALSE) // if further nodeB needed to be visited also,
+					stackNodeIDs[int(stackptr++)] = stackNodeID_B; // push nodeB on stack for future round
+							// also, increase stackptr by 1
+				// since nodeA is always the closest node, set nodeA as the current node to be processed
+				currentBoxNodeData0 = nodeAData0;
+				currentBoxNodeData1 = nodeAData1;
+				popNextNodeOffStack = FALSE; // this will prevent the stackptr from decreasing by 1
+			}
+
+			continue;
+		} // end if (currentBoxNodeData1.z == 0.0) // inner node
+		
+		/* 
+		//debug leaf AABB visualization
+		d = BoxIntersect(currentBoxNodeData0.xyz, vec3(currentBoxNodeData0.w, currentBoxNodeData1.xy), rayOrigin, rayDirection, normal, isRayExiting);
+		if (d > 0.0 && d < t)
+		{
+			t = d;
+			intersectionNormal = normal;
+			intersectionMaterial = diffuseMetalMaterial;
+		} 
+		*/
+
+		// else this is a leaf
+
+		// each shape's data is encoded in 8 rgba(or xyzw) texture slots
+		id = 8.0 * currentBoxNodeData1.w;
+
+		uv0 = ivec2( mod(id + 0.0, 2048.0), (id + 0.0) * INV_TEXTURE_WIDTH );
+		uv1 = ivec2( mod(id + 1.0, 2048.0), (id + 1.0) * INV_TEXTURE_WIDTH );
+		uv2 = ivec2( mod(id + 2.0, 2048.0), (id + 2.0) * INV_TEXTURE_WIDTH );
+		uv3 = ivec2( mod(id + 3.0, 2048.0), (id + 3.0) * INV_TEXTURE_WIDTH );
+		uv4 = ivec2( mod(id + 4.0, 2048.0), (id + 4.0) * INV_TEXTURE_WIDTH );
+		
+		invTransformMatrix = mat4( texelFetch(uShapes_DataTexture, uv0, 0),
+		 			   texelFetch(uShapes_DataTexture, uv1, 0), 
+		 			   texelFetch(uShapes_DataTexture, uv2, 0), 
+		 			   texelFetch(uShapes_DataTexture, uv3, 0) );
+
+		sd4 = texelFetch(uShapes_DataTexture, uv4, 0);
+
+		// transform ray into shape's object space
+		rObjOrigin = vec3( invTransformMatrix * vec4(rayOrigin, 1.0) );
+		rObjDirection = vec3( invTransformMatrix * vec4(rayDirection, 0.0) );
+
+		if (sd4.x == 0.0)
+			d = UnitBoxIntersect(rObjOrigin, rObjDirection, normal);
+		// else if (sd4.x == 1.0)
+		// 	d = UnitSphereIntersect(rObjOrigin, rObjDirection, normal);
+		else if (sd4.x == 2.0)
+			d = UnitCylinderIntersect(rObjOrigin, rObjDirection, normal);
+		
+		if (d < t)
+		{
+			t = d;
+			intersectionNormal = normal;
+			hitMatrix = invTransformMatrix; // save winning matrix for intersectionNormal code below
+			shapeID = id;
+			shapeLookupNeeded = TRUE;
+		}
+	      
+        } // end while (TRUE)
+
+
+	if (shapeLookupNeeded == TRUE)
+	{
+		// uv0 = ivec2( mod(shapeID + 0.0, 2048.0), (shapeID + 0.0) * INV_TEXTURE_WIDTH );
+		// uv1 = ivec2( mod(shapeID + 1.0, 2048.0), (shapeID + 1.0) * INV_TEXTURE_WIDTH );
+		// uv2 = ivec2( mod(shapeID + 2.0, 2048.0), (shapeID + 2.0) * INV_TEXTURE_WIDTH );
+		// uv3 = ivec2( mod(shapeID + 3.0, 2048.0), (shapeID + 3.0) * INV_TEXTURE_WIDTH );
+		// uv4 = ivec2( mod(shapeID + 4.0, 2048.0), (shapeID + 4.0) * INV_TEXTURE_WIDTH );
+		// uv5 = ivec2( mod(shapeID + 5.0, 2048.0), (shapeID + 5.0) * INV_TEXTURE_WIDTH );
+		// uv6 = ivec2( mod(shapeID + 6.0, 2048.0), (shapeID + 6.0) * INV_TEXTURE_WIDTH );
+		uv7 = ivec2( mod(shapeID + 7.0, 2048.0), (shapeID + 7.0) * INV_TEXTURE_WIDTH );
+		
+		// sd0 = texelFetch(uShapes_DataTexture, uv0, 0);
+		// sd1 = texelFetch(uShapes_DataTexture, uv1, 0);
+		// sd2 = texelFetch(uShapes_DataTexture, uv2, 0);
+		// sd3 = texelFetch(uShapes_DataTexture, uv3, 0);
+		// sd4 = texelFetch(uShapes_DataTexture, uv4, 0);
+		// sd5 = texelFetch(uShapes_DataTexture, uv5, 0);
+		// sd6 = texelFetch(uShapes_DataTexture, uv6, 0);
+		sd7 = texelFetch(uShapes_DataTexture, uv7, 0);
+
+		intersectionNormal = normalize(transpose(mat3(hitMatrix)) * intersectionNormal);
+		intersectionMaterial = marbleMaterial;
+		intersectionPoint = rayOrigin + (t * rayDirection);
+		intersectionUV = calcUnitBoxUV(intersectionPoint, intersectionNormal, vec3(sd7));
+		//hitType = int(sd4.y);
+		//hitRoughness = sd4.w;
+		//hitColor = sd5.rgb;
+		//hitIoR = sd6.x;
+	} // end if (shapeLookupNeeded == TRUE)
+
+
+	// Important! Must first initialize all planes to 0, otherwise garbage values might be used (especially on mobile)
+	planes[0] = planes[1] = planes[2] = planes[3] = planes[4] = planes[5] = planes[6] = planes[7] = planes[8] = planes[9] = planes[10] = 
+	planes[11] = planes[12] = planes[13] = planes[14] = planes[15] = planes[16] = planes[17] = planes[18] = planes[19] = vec4(0);
 
 
 	// TETRAHEDRON - 4 faces
@@ -293,7 +640,6 @@ float SceneIntersect( int isShadowRay )
 		t = d;
 		intersectionNormal = transpose(mat3(uTetrahedronInvMatrix)) * normal;
 		intersectionMaterial = diffuseMetalMaterial;
-		intersectionShapeIsClosed = TRUE;
 	}
 
 	// CUBE - 6 faces - I chose to use the usual 'BoxIntersect' routine here, rather than the 'ConvexPolyhedronIntersect' with 6 planes
@@ -306,7 +652,6 @@ float SceneIntersect( int isShadowRay )
 		t = d;
 		intersectionNormal = transpose(mat3(uCubeInvMatrix)) * normal;
 		intersectionMaterial = diffuseMetalMaterial;
-		intersectionShapeIsClosed = TRUE;
 	}
 
 	// OCTAHEDRON - 8 faces
@@ -329,7 +674,6 @@ float SceneIntersect( int isShadowRay )
 		t = d;
 		intersectionNormal = transpose(mat3(uOctahedronInvMatrix)) * normal;
 		intersectionMaterial = diffuseMetalMaterial;
-		intersectionShapeIsClosed = TRUE;
 	}
 
 	// DODECAHEDRON - 12 faces
@@ -356,7 +700,6 @@ float SceneIntersect( int isShadowRay )
 		t = d;
 		intersectionNormal = transpose(mat3(uDodecahedronInvMatrix)) * normal;
 		intersectionMaterial = diffuseMetalMaterial;
-		intersectionShapeIsClosed = TRUE;
 	}
 
 	// ICOSAHEDRON - 20 faces
@@ -391,7 +734,6 @@ float SceneIntersect( int isShadowRay )
 		t = d;
 		intersectionNormal = transpose(mat3(uIcosahedronInvMatrix)) * normal;
 		intersectionMaterial = diffuseMetalMaterial;
-		intersectionShapeIsClosed = TRUE;
 	}
 
 
@@ -404,658 +746,6 @@ float SceneIntersect( int isShadowRay )
 		intersectionNormal = rectangles[0].normal;
 		intersectionMaterial = rectangles[0].material;
 		intersectionUV = vec2(u, v) * rectangles[0].uvScale;
-		intersectionShapeIsClosed = FALSE;
-	}
-
-
-	d = BoxIntersect(boxes[0].minCorner, boxes[0].maxCorner, rayOrigin, rayDirection, normal, isRayExiting);
-	if (d < t)
-	{
-		t = d;
-		intersectionPoint = rayOrigin + (t * rayDirection);
-		intersectionNormal = normal;
-		intersectionMaterial = boxes[0].material;
-		intersectionUV = calcUnitBoxUV(intersectionPoint, normal, vec3(1,1,1)) * boxes[0].uvScale;
-		intersectionShapeIsClosed = TRUE;
-	}
-	d = BoxIntersect(boxes[1].minCorner, boxes[1].maxCorner, rayOrigin, rayDirection, normal, isRayExiting);
-	if (d < t)
-	{
-		t = d;
-		intersectionPoint = rayOrigin + (t * rayDirection);
-		intersectionNormal = normal;
-		intersectionMaterial = boxes[1].material;
-		intersectionUV = calcUnitBoxUV(intersectionPoint, normal, vec3(-1,1,1)) * boxes[1].uvScale;
-		intersectionShapeIsClosed = TRUE;
-	}
-	d = BoxIntersect(boxes[2].minCorner, boxes[2].maxCorner, rayOrigin, rayDirection, normal, isRayExiting);
-	if (d < t)
-	{
-		t = d;
-		intersectionPoint = rayOrigin + (t * rayDirection);
-		intersectionNormal = normal;
-		intersectionMaterial = boxes[2].material;
-		intersectionUV = calcUnitBoxUV(intersectionPoint, normal, vec3(1,-1,1)) * boxes[2].uvScale;
-		intersectionShapeIsClosed = TRUE;
-	}
-	d = BoxIntersect(boxes[3].minCorner, boxes[3].maxCorner, rayOrigin, rayDirection, normal, isRayExiting);
-	if (d < t)
-	{
-		t = d;
-		intersectionPoint = rayOrigin + (t * rayDirection);
-		intersectionNormal = normal;
-		intersectionMaterial = boxes[3].material;
-		intersectionUV = calcUnitBoxUV(intersectionPoint, normal, vec3(1,1,-1)) * boxes[3].uvScale;
-		intersectionShapeIsClosed = TRUE;
-	}
-	d = BoxIntersect(boxes[4].minCorner, boxes[4].maxCorner, rayOrigin, rayDirection, normal, isRayExiting);
-	if (d < t)
-	{
-		t = d;
-		intersectionPoint = rayOrigin + (t * rayDirection);
-		intersectionNormal = normal;
-		intersectionMaterial = boxes[4].material;
-		intersectionUV = calcUnitBoxUV(intersectionPoint, normal, vec3(-1,-1,1)) * boxes[4].uvScale;
-		intersectionShapeIsClosed = TRUE;
-	}
-	d = BoxIntersect(boxes[5].minCorner, boxes[5].maxCorner, rayOrigin, rayDirection, normal, isRayExiting);
-	if (d < t)
-	{
-		t = d;
-		intersectionPoint = rayOrigin + (t * rayDirection);
-		intersectionNormal = normal;
-		intersectionMaterial = boxes[5].material;
-		intersectionUV = calcUnitBoxUV(intersectionPoint, normal, vec3(1,-1,-1)) * boxes[5].uvScale;
-		intersectionShapeIsClosed = TRUE;
-	}
-
-	d = BoxIntersect(boxes[6].minCorner, boxes[6].maxCorner, rayOrigin, rayDirection, normal, isRayExiting);
-	if (d < t)
-	{
-		t = d;
-		intersectionPoint = rayOrigin + (t * rayDirection);
-		intersectionNormal = normal;
-		intersectionMaterial = boxes[6].material;
-		intersectionUV = calcUnitBoxUV(intersectionPoint, normal, vec3(1,1,1)) * boxes[6].uvScale;
-		intersectionShapeIsClosed = TRUE;
-	}
-	d = BoxIntersect(boxes[7].minCorner, boxes[7].maxCorner, rayOrigin, rayDirection, normal, isRayExiting);
-	if (d < t)
-	{
-		t = d;
-		intersectionPoint = rayOrigin + (t * rayDirection);
-		intersectionNormal = normal;
-		intersectionMaterial = boxes[7].material;
-		intersectionUV = calcUnitBoxUV(intersectionPoint, normal, vec3(-1,1,1)) * boxes[7].uvScale;
-		intersectionShapeIsClosed = TRUE;
-	}
-	d = BoxIntersect(boxes[8].minCorner, boxes[8].maxCorner, rayOrigin, rayDirection, normal, isRayExiting);
-	if (d < t)
-	{
-		t = d;
-		intersectionPoint = rayOrigin + (t * rayDirection);
-		intersectionNormal = normal;
-		intersectionMaterial = boxes[8].material;
-		intersectionUV = calcUnitBoxUV(intersectionPoint, normal, vec3(1,-1,1)) * boxes[8].uvScale;
-		intersectionShapeIsClosed = TRUE;
-	}
-	d = BoxIntersect(boxes[9].minCorner, boxes[9].maxCorner, rayOrigin, rayDirection, normal, isRayExiting);
-	if (d < t)
-	{
-		t = d;
-		intersectionPoint = rayOrigin + (t * rayDirection);
-		intersectionNormal = normal;
-		intersectionMaterial = boxes[9].material;
-		intersectionUV = calcUnitBoxUV(intersectionPoint, normal, vec3(1,1,-1)) * boxes[9].uvScale;
-		intersectionShapeIsClosed = TRUE;
-	}
-	d = BoxIntersect(boxes[10].minCorner, boxes[10].maxCorner, rayOrigin, rayDirection, normal, isRayExiting);
-	if (d < t)
-	{
-		t = d;
-		intersectionPoint = rayOrigin + (t * rayDirection);
-		intersectionNormal = normal;
-		intersectionMaterial = boxes[10].material;
-		intersectionUV = calcUnitBoxUV(intersectionPoint, normal, vec3(-1,-1,1)) * boxes[10].uvScale;
-		intersectionShapeIsClosed = TRUE;
-	}
-	d = BoxIntersect(boxes[11].minCorner, boxes[11].maxCorner, rayOrigin, rayDirection, normal, isRayExiting);
-	if (d < t)
-	{
-		t = d;
-		intersectionPoint = rayOrigin + (t * rayDirection);
-		intersectionNormal = normal;
-		intersectionMaterial = boxes[11].material;
-		intersectionUV = calcUnitBoxUV(intersectionPoint, normal, vec3(1,-1,-1)) * boxes[11].uvScale;
-		intersectionShapeIsClosed = TRUE;
-	}
-
-
-
-	// smaller adjacent cylinders on bump map from the previous intersection
-	d = CylinderIntersect( cylinders[1].widthRadius, cylinders[1].heightRadius, cylinders[1].position, rayOrigin, rayDirection, normal );
-	if (d < t)
-	{
-		t = d;
-		intersectionNormal = normal;
-		intersectionMaterial = cylinders[1].material;
-		intersectionShapeIsClosed = FALSE;
-	}
-	d = CylinderIntersect( cylinders[2].widthRadius, cylinders[2].heightRadius, cylinders[2].position, rayOrigin, rayDirection, normal );
-	if (d < t)
-	{
-		t = d;
-		intersectionNormal = normal;
-		intersectionMaterial = cylinders[2].material;
-		intersectionShapeIsClosed = FALSE;
-	}
-
-	d = CylinderIntersect( cylinders[4].widthRadius, cylinders[4].heightRadius, cylinders[4].position, rayOrigin, rayDirection, normal );
-	if (d < t)
-	{
-		t = d;
-		intersectionNormal = normal;
-		intersectionMaterial = cylinders[4].material;
-		intersectionShapeIsClosed = FALSE;
-	}
-	d = CylinderIntersect( cylinders[5].widthRadius, cylinders[5].heightRadius, cylinders[5].position, rayOrigin, rayDirection, normal );
-	if (d < t)
-	{
-		t = d;
-		intersectionNormal = normal;
-		intersectionMaterial = cylinders[5].material;
-		intersectionShapeIsClosed = FALSE;
-	}
-
-	d = CylinderIntersect( cylinders[7].widthRadius, cylinders[7].heightRadius, cylinders[7].position, rayOrigin, rayDirection, normal );
-	if (d < t)
-	{
-		t = d;
-		intersectionNormal = normal;
-		intersectionMaterial = cylinders[7].material;
-		intersectionShapeIsClosed = FALSE;
-	}
-	d = CylinderIntersect( cylinders[8].widthRadius, cylinders[8].heightRadius, cylinders[8].position, rayOrigin, rayDirection, normal );
-	if (d < t)
-	{
-		t = d;
-		intersectionNormal = normal;
-		intersectionMaterial = cylinders[8].material;
-		intersectionShapeIsClosed = FALSE;
-	}
-
-	d = CylinderIntersect( cylinders[10].widthRadius, cylinders[10].heightRadius, cylinders[10].position, rayOrigin, rayDirection, normal );
-	if (d < t)
-	{
-		t = d;
-		intersectionNormal = normal;
-		intersectionMaterial = cylinders[10].material;
-		intersectionShapeIsClosed = FALSE;
-	}
-	d = CylinderIntersect( cylinders[11].widthRadius, cylinders[11].heightRadius, cylinders[11].position, rayOrigin, rayDirection, normal );
-	if (d < t)
-	{
-		t = d;
-		intersectionNormal = normal;
-		intersectionMaterial = cylinders[11].material;
-		intersectionShapeIsClosed = FALSE;
-	}
-
-	d = CylinderIntersect( cylinders[13].widthRadius, cylinders[13].heightRadius, cylinders[13].position, rayOrigin, rayDirection, normal );
-	if (d < t)
-	{
-		t = d;
-		intersectionNormal = normal;
-		intersectionMaterial = cylinders[13].material;
-		intersectionShapeIsClosed = FALSE;
-	}
-	d = CylinderIntersect( cylinders[14].widthRadius, cylinders[14].heightRadius, cylinders[14].position, rayOrigin, rayDirection, normal );
-	if (d < t)
-	{
-		t = d;
-		intersectionNormal = normal;
-		intersectionMaterial = cylinders[14].material;
-		intersectionShapeIsClosed = FALSE;
-	}
-
-	d = CylinderIntersect( cylinders[16].widthRadius, cylinders[16].heightRadius, cylinders[16].position, rayOrigin, rayDirection, normal );
-	if (d < t)
-	{
-		t = d;
-		intersectionNormal = normal;
-		intersectionMaterial = cylinders[16].material;
-		intersectionShapeIsClosed = FALSE;
-	}
-	d = CylinderIntersect( cylinders[17].widthRadius, cylinders[17].heightRadius, cylinders[17].position, rayOrigin, rayDirection, normal );
-	if (d < t)
-	{
-		t = d;
-		intersectionNormal = normal;
-		intersectionMaterial = cylinders[17].material;
-		intersectionShapeIsClosed = FALSE;
-	}
-
-	
-
-	// large base cylinder
-	d = CylinderIntersect( cylinders[0].widthRadius, cylinders[0].heightRadius, cylinders[0].position, rayOrigin, rayDirection, normal );
-	if (d < t)
-	{
-		// large base cylinder
-		t = d;
-		intersectionPoint = rayOrigin + (d * rayDirection);
-		intersectionNormal = normal;
-		intersectionMaterial = cylinders[0].material;
-		intersectionUV = calcCylinderUV(intersectionPoint, cylinders[0].heightRadius, cylinders[0].position) * cylinders[0].uvScale;
-		intersectionShapeIsClosed = FALSE;
-
-		normalizedVec = intersectionPoint - cylinders[0].position;
-		// must compute theta before normalizing the Vec
-		theta = normalizedVec.y * (1.0 / cylinders[0].heightRadius);
-		normalizedVec = normalize(normalizedVec);
-		phi = atan(normalizedVec.z, normalizedVec.x);
-
-		/* theta *= thetaScale;
-		thetaMinusOne = theta - (1.0 / thetaScale);
-		thetaPlusOne  = theta + (1.0 / thetaScale);
-		theta = round(theta);
-		thetaMinusOne = round(thetaMinusOne);
-		thetaPlusOne = round(thetaPlusOne);
-		theta *= oneOver_thetaScale;
-		thetaMinusOne *= oneOver_thetaScale;
-		thetaPlusOne *= oneOver_thetaScale; */
-		
-		phi *= phiScale;
-		phiMinusOne = phi - (TWO_PI / phiScale);
-		phiPlusOne  = phi + (TWO_PI / phiScale);
-		phi = round(phi);
-		phiMinusOne = round(phiMinusOne);
-		phiPlusOne = round(phiPlusOne);
-		phi *= oneOver_phiScale;
-		phiMinusOne *= oneOver_phiScale;
-		phiPlusOne *= oneOver_phiScale;
-		
-		normalizedVec = vec3( cos(phi), 0.0, sin(phi) );
-		smallCylinderPos = cylinders[0].position + (cylinders[0].widthRadius * normalizedVec);
-		//smallCylinderPos.y += (theta * cylinders[0].heightRadius);
-
-		bumpCylinderHeightRadius = cylinders[0].heightRadius;
-		cylinders[1].widthRadius = bumpCylinderWidthRadius;
-		cylinders[1].heightRadius = bumpCylinderHeightRadius;
-		cylinders[2].widthRadius = bumpCylinderWidthRadius;
-		cylinders[2].heightRadius = bumpCylinderHeightRadius;
-		
-		// (theta, phi - 1)
-		normalizedVec = vec3( cos(phiMinusOne), 0.0, sin(phiMinusOne) );
-		cylinders[1].position = cylinders[0].position + (cylinders[0].widthRadius * normalizedVec);
-		//cylinders[1].position.y += (theta * cylinders[0].heightRadius);
-		// (theta, phi + 1)
-		normalizedVec = vec3( cos(phiPlusOne), 0.0, sin(phiPlusOne) );
-		cylinders[2].position = cylinders[0].position + (cylinders[0].widthRadius * normalizedVec);
-		//cylinders[2].position.y += (theta * cylinders[0].heightRadius);
-
-		d = CylinderIntersect( bumpCylinderWidthRadius, bumpCylinderHeightRadius, smallCylinderPos, rayOrigin, rayDirection, normal );
-		if (d < t)
-		{
-			t = d;
-			intersectionPoint = rayOrigin + (t * rayDirection);
-			intersectionNormal = normal;
-			intersectionMaterial = cylinders[0].material;
-			intersectionUV = (calcCylinderUV(intersectionPoint, cylinders[0].heightRadius, cylinders[0].position) + vec2(0.5, 0.0)) * vec2(3, 1);
-			intersectionShapeIsClosed = FALSE;
-		}
-		
-	}
-
-	// large base cylinder
-	d = CylinderIntersect( cylinders[3].widthRadius, cylinders[3].heightRadius, cylinders[3].position, rayOrigin, rayDirection, normal );
-	if (d < t)
-	{
-		// large base cylinder
-		t = d;
-		intersectionPoint = rayOrigin + (d * rayDirection);
-		intersectionNormal = normal;
-		intersectionMaterial = cylinders[3].material;
-		intersectionUV = calcCylinderUV(intersectionPoint, cylinders[3].heightRadius, cylinders[3].position) * cylinders[3].uvScale;
-		intersectionShapeIsClosed = FALSE;
-
-		normalizedVec = intersectionPoint - cylinders[3].position;
-		// must compute theta before normalizing the Vec
-		theta = normalizedVec.y * (1.0 / cylinders[3].heightRadius);
-		normalizedVec = normalize(normalizedVec);
-		phi = atan(normalizedVec.z, normalizedVec.x);
-
-		/* theta *= thetaScale;
-		thetaMinusOne = theta - (1.0 / thetaScale);
-		thetaPlusOne  = theta + (1.0 / thetaScale);
-		theta = round(theta);
-		thetaMinusOne = round(thetaMinusOne);
-		thetaPlusOne = round(thetaPlusOne);
-		theta *= oneOver_thetaScale;
-		thetaMinusOne *= oneOver_thetaScale;
-		thetaPlusOne *= oneOver_thetaScale; */
-		
-		phi *= phiScale;
-		phiMinusOne = phi - (TWO_PI / phiScale);
-		phiPlusOne  = phi + (TWO_PI / phiScale);
-		phi = round(phi);
-		phiMinusOne = round(phiMinusOne);
-		phiPlusOne = round(phiPlusOne);
-		phi *= oneOver_phiScale;
-		phiMinusOne *= oneOver_phiScale;
-		phiPlusOne *= oneOver_phiScale;
-		
-		normalizedVec = vec3( cos(phi), 0.0, sin(phi) );
-		smallCylinderPos = cylinders[3].position + (cylinders[3].widthRadius * normalizedVec);
-		//smallCylinderPos.y += (theta * cylinders[0].heightRadius);
-
-		bumpCylinderHeightRadius = cylinders[3].heightRadius;
-		cylinders[4].widthRadius = bumpCylinderWidthRadius;
-		cylinders[4].heightRadius = bumpCylinderHeightRadius;
-		cylinders[5].widthRadius = bumpCylinderWidthRadius;
-		cylinders[5].heightRadius = bumpCylinderHeightRadius;
-		
-		// (theta, phi - 1)
-		normalizedVec = vec3( cos(phiMinusOne), 0.0, sin(phiMinusOne) );
-		cylinders[4].position = cylinders[3].position + (cylinders[3].widthRadius * normalizedVec);
-		//cylinders[1].position.y += (theta * cylinders[0].heightRadius);
-		// (theta, phi + 1)
-		normalizedVec = vec3( cos(phiPlusOne), 0.0, sin(phiPlusOne) );
-		cylinders[5].position = cylinders[3].position + (cylinders[3].widthRadius * normalizedVec);
-		//cylinders[2].position.y += (theta * cylinders[0].heightRadius);
-
-		d = CylinderIntersect( bumpCylinderWidthRadius, bumpCylinderHeightRadius, smallCylinderPos, rayOrigin, rayDirection, normal );
-		if (d < t)
-		{
-			t = d;
-			intersectionPoint = rayOrigin + (t * rayDirection);
-			intersectionNormal = normal;
-			intersectionMaterial = cylinders[3].material;
-			intersectionUV = (calcCylinderUV(intersectionPoint, cylinders[3].heightRadius, cylinders[3].position) + vec2(0.5, 0.5)) * vec2(3, -1);
-			intersectionShapeIsClosed = FALSE;
-		}
-		
-	}
-
-	// large base cylinder
-	d = CylinderIntersect( cylinders[6].widthRadius, cylinders[6].heightRadius, cylinders[6].position, rayOrigin, rayDirection, normal );
-	if (d < t)
-	{
-		// large base cylinder
-		t = d;
-		intersectionPoint = rayOrigin + (d * rayDirection);
-		intersectionNormal = normal;
-		intersectionMaterial = cylinders[3].material;
-		intersectionUV = calcCylinderUV(intersectionPoint, cylinders[6].heightRadius, cylinders[6].position) * cylinders[6].uvScale;
-		intersectionShapeIsClosed = FALSE;
-
-		normalizedVec = intersectionPoint - cylinders[6].position;
-		// must compute theta before normalizing the Vec
-		theta = normalizedVec.y * (1.0 / cylinders[6].heightRadius);
-		normalizedVec = normalize(normalizedVec);
-		phi = atan(normalizedVec.z, normalizedVec.x);
-
-		/* theta *= thetaScale;
-		thetaMinusOne = theta - (1.0 / thetaScale);
-		thetaPlusOne  = theta + (1.0 / thetaScale);
-		theta = round(theta);
-		thetaMinusOne = round(thetaMinusOne);
-		thetaPlusOne = round(thetaPlusOne);
-		theta *= oneOver_thetaScale;
-		thetaMinusOne *= oneOver_thetaScale;
-		thetaPlusOne *= oneOver_thetaScale; */
-		
-		phi *= phiScale;
-		phiMinusOne = phi - (TWO_PI / phiScale);
-		phiPlusOne  = phi + (TWO_PI / phiScale);
-		phi = round(phi);
-		phiMinusOne = round(phiMinusOne);
-		phiPlusOne = round(phiPlusOne);
-		phi *= oneOver_phiScale;
-		phiMinusOne *= oneOver_phiScale;
-		phiPlusOne *= oneOver_phiScale;
-		
-		normalizedVec = vec3( cos(phi), 0.0, sin(phi) );
-		smallCylinderPos = cylinders[6].position + (cylinders[6].widthRadius * normalizedVec);
-		//smallCylinderPos.y += (theta * cylinders[0].heightRadius);
-
-		bumpCylinderHeightRadius = cylinders[6].heightRadius;
-		cylinders[7].widthRadius = bumpCylinderWidthRadius;
-		cylinders[7].heightRadius = bumpCylinderHeightRadius;
-		cylinders[8].widthRadius = bumpCylinderWidthRadius;
-		cylinders[8].heightRadius = bumpCylinderHeightRadius;
-		
-		// (theta, phi - 1)
-		normalizedVec = vec3( cos(phiMinusOne), 0.0, sin(phiMinusOne) );
-		cylinders[7].position = cylinders[6].position + (cylinders[6].widthRadius * normalizedVec);
-		//cylinders[1].position.y += (theta * cylinders[0].heightRadius);
-		// (theta, phi + 1)
-		normalizedVec = vec3( cos(phiPlusOne), 0.0, sin(phiPlusOne) );
-		cylinders[8].position = cylinders[6].position + (cylinders[6].widthRadius * normalizedVec);
-		//cylinders[2].position.y += (theta * cylinders[0].heightRadius);
-
-		d = CylinderIntersect( bumpCylinderWidthRadius, bumpCylinderHeightRadius, smallCylinderPos, rayOrigin, rayDirection, normal );
-		if (d < t)
-		{
-			t = d;
-			intersectionPoint = rayOrigin + (t * rayDirection);
-			intersectionNormal = normal;
-			intersectionMaterial = cylinders[6].material;
-			intersectionUV = (calcCylinderUV(intersectionPoint, cylinders[6].heightRadius, cylinders[6].position) + vec2(-0.5, 0.5)) * vec2(3, 1);
-			intersectionShapeIsClosed = FALSE;
-		}
-		
-	}
-
-	// large base cylinder
-	d = CylinderIntersect( cylinders[9].widthRadius, cylinders[9].heightRadius, cylinders[9].position, rayOrigin, rayDirection, normal );
-	if (d < t)
-	{
-		// large base cylinder
-		t = d;
-		intersectionPoint = rayOrigin + (d * rayDirection);
-		intersectionNormal = normal;
-		intersectionMaterial = cylinders[9].material;
-		intersectionUV = calcCylinderUV(intersectionPoint, cylinders[9].heightRadius, cylinders[9].position) * cylinders[9].uvScale;
-		intersectionShapeIsClosed = FALSE;
-
-		normalizedVec = intersectionPoint - cylinders[9].position;
-		// must compute theta before normalizing the Vec
-		theta = normalizedVec.y * (1.0 / cylinders[9].heightRadius);
-		normalizedVec = normalize(normalizedVec);
-		phi = atan(normalizedVec.z, normalizedVec.x);
-
-		/* theta *= thetaScale;
-		thetaMinusOne = theta - (1.0 / thetaScale);
-		thetaPlusOne  = theta + (1.0 / thetaScale);
-		theta = round(theta);
-		thetaMinusOne = round(thetaMinusOne);
-		thetaPlusOne = round(thetaPlusOne);
-		theta *= oneOver_thetaScale;
-		thetaMinusOne *= oneOver_thetaScale;
-		thetaPlusOne *= oneOver_thetaScale; */
-		
-		phi *= phiScale;
-		phiMinusOne = phi - (TWO_PI / phiScale);
-		phiPlusOne  = phi + (TWO_PI / phiScale);
-		phi = round(phi);
-		phiMinusOne = round(phiMinusOne);
-		phiPlusOne = round(phiPlusOne);
-		phi *= oneOver_phiScale;
-		phiMinusOne *= oneOver_phiScale;
-		phiPlusOne *= oneOver_phiScale;
-		
-		normalizedVec = vec3( cos(phi), 0.0, sin(phi) );
-		smallCylinderPos = cylinders[9].position + (cylinders[9].widthRadius * normalizedVec);
-		//smallCylinderPos.y += (theta * cylinders[0].heightRadius);
-
-		bumpCylinderHeightRadius = cylinders[9].heightRadius;
-		cylinders[10].widthRadius = bumpCylinderWidthRadius;
-		cylinders[10].heightRadius = bumpCylinderHeightRadius;
-		cylinders[11].widthRadius = bumpCylinderWidthRadius;
-		cylinders[11].heightRadius = bumpCylinderHeightRadius;
-		
-		// (theta, phi - 1)
-		normalizedVec = vec3( cos(phiMinusOne), 0.0, sin(phiMinusOne) );
-		cylinders[10].position = cylinders[9].position + (cylinders[9].widthRadius * normalizedVec);
-		//cylinders[1].position.y += (theta * cylinders[0].heightRadius);
-		// (theta, phi + 1)
-		normalizedVec = vec3( cos(phiPlusOne), 0.0, sin(phiPlusOne) );
-		cylinders[11].position = cylinders[9].position + (cylinders[9].widthRadius * normalizedVec);
-		//cylinders[2].position.y += (theta * cylinders[0].heightRadius);
-
-		d = CylinderIntersect( bumpCylinderWidthRadius, bumpCylinderHeightRadius, smallCylinderPos, rayOrigin, rayDirection, normal );
-		if (d < t)
-		{
-			t = d;
-			intersectionPoint = rayOrigin + (t * rayDirection);
-			intersectionNormal = normal;
-			intersectionMaterial = cylinders[9].material;
-			intersectionUV = (calcCylinderUV(intersectionPoint, cylinders[9].heightRadius, cylinders[9].position) + vec2(-0.5, -0.5)) * vec2(3, 1);
-			intersectionShapeIsClosed = FALSE;
-		}
-		
-	}
-
-	// large base cylinder
-	d = CylinderIntersect( cylinders[12].widthRadius, cylinders[12].heightRadius, cylinders[12].position, rayOrigin, rayDirection, normal );
-	if (d < t)
-	{
-		// large base cylinder
-		t = d;
-		intersectionPoint = rayOrigin + (d * rayDirection);
-		intersectionNormal = normal;
-		intersectionMaterial = cylinders[12].material;
-		intersectionUV = calcCylinderUV(intersectionPoint, cylinders[12].heightRadius, cylinders[12].position) * cylinders[12].uvScale;
-		intersectionShapeIsClosed = FALSE;
-
-		normalizedVec = intersectionPoint - cylinders[12].position;
-		// must compute theta before normalizing the Vec
-		theta = normalizedVec.y * (1.0 / cylinders[12].heightRadius);
-		normalizedVec = normalize(normalizedVec);
-		phi = atan(normalizedVec.z, normalizedVec.x);
-
-		/* theta *= thetaScale;
-		thetaMinusOne = theta - (1.0 / thetaScale);
-		thetaPlusOne  = theta + (1.0 / thetaScale);
-		theta = round(theta);
-		thetaMinusOne = round(thetaMinusOne);
-		thetaPlusOne = round(thetaPlusOne);
-		theta *= oneOver_thetaScale;
-		thetaMinusOne *= oneOver_thetaScale;
-		thetaPlusOne *= oneOver_thetaScale; */
-		
-		phi *= phiScale;
-		phiMinusOne = phi - (TWO_PI / phiScale);
-		phiPlusOne  = phi + (TWO_PI / phiScale);
-		phi = round(phi);
-		phiMinusOne = round(phiMinusOne);
-		phiPlusOne = round(phiPlusOne);
-		phi *= oneOver_phiScale;
-		phiMinusOne *= oneOver_phiScale;
-		phiPlusOne *= oneOver_phiScale;
-		
-		normalizedVec = vec3( cos(phi), 0.0, sin(phi) );
-		smallCylinderPos = cylinders[12].position + (cylinders[12].widthRadius * normalizedVec);
-		//smallCylinderPos.y += (theta * cylinders[0].heightRadius);
-
-		bumpCylinderHeightRadius = cylinders[12].heightRadius;
-		cylinders[13].widthRadius = bumpCylinderWidthRadius;
-		cylinders[13].heightRadius = bumpCylinderHeightRadius;
-		cylinders[14].widthRadius = bumpCylinderWidthRadius;
-		cylinders[14].heightRadius = bumpCylinderHeightRadius;
-		
-		// (theta, phi - 1)
-		normalizedVec = vec3( cos(phiMinusOne), 0.0, sin(phiMinusOne) );
-		cylinders[13].position = cylinders[12].position + (cylinders[12].widthRadius * normalizedVec);
-		//cylinders[1].position.y += (theta * cylinders[0].heightRadius);
-		// (theta, phi + 1)
-		normalizedVec = vec3( cos(phiPlusOne), 0.0, sin(phiPlusOne) );
-		cylinders[14].position = cylinders[12].position + (cylinders[12].widthRadius * normalizedVec);
-		//cylinders[2].position.y += (theta * cylinders[0].heightRadius);
-
-		d = CylinderIntersect( bumpCylinderWidthRadius, bumpCylinderHeightRadius, smallCylinderPos, rayOrigin, rayDirection, normal );
-		if (d < t)
-		{
-			t = d;
-			intersectionPoint = rayOrigin + (t * rayDirection);
-			intersectionNormal = normal;
-			intersectionMaterial = cylinders[12].material;
-			intersectionUV = (calcCylinderUV(intersectionPoint, cylinders[12].heightRadius, cylinders[12].position) + vec2(-0.5, 0.5)) * vec2(-3, -1);
-			intersectionShapeIsClosed = FALSE;
-		}
-		
-	}
-
-	// large base cylinder
-	d = CylinderIntersect( cylinders[15].widthRadius, cylinders[15].heightRadius, cylinders[15].position, rayOrigin, rayDirection, normal );
-	if (d < t)
-	{
-		// large base cylinder
-		t = d;
-		intersectionPoint = rayOrigin + (d * rayDirection);
-		intersectionNormal = normal;
-		intersectionMaterial = cylinders[15].material;
-		intersectionUV = calcCylinderUV(intersectionPoint, cylinders[15].heightRadius, cylinders[15].position) * cylinders[15].uvScale;
-		intersectionShapeIsClosed = FALSE;
-
-		normalizedVec = intersectionPoint - cylinders[15].position;
-		// must compute theta before normalizing the Vec
-		theta = normalizedVec.y * (1.0 / cylinders[15].heightRadius);
-		normalizedVec = normalize(normalizedVec);
-		phi = atan(normalizedVec.z, normalizedVec.x);
-		
-
-		/* theta *= thetaScale;
-		thetaMinusOne = theta - (1.0 / thetaScale);
-		thetaPlusOne  = theta + (1.0 / thetaScale);
-		theta = round(theta);
-		thetaMinusOne = round(thetaMinusOne);
-		thetaPlusOne = round(thetaPlusOne);
-		theta *= oneOver_thetaScale;
-		thetaMinusOne *= oneOver_thetaScale;
-		thetaPlusOne *= oneOver_thetaScale; */
-		
-		phi *= phiScale;
-		phiMinusOne = phi - (TWO_PI / phiScale);
-		phiPlusOne  = phi + (TWO_PI / phiScale);
-		phi = round(phi);
-		phiMinusOne = round(phiMinusOne);
-		phiPlusOne = round(phiPlusOne);
-		phi *= oneOver_phiScale;
-		phiMinusOne *= oneOver_phiScale;
-		phiPlusOne *= oneOver_phiScale;
-		
-		normalizedVec = vec3( cos(phi), 0.0, sin(phi) );
-		smallCylinderPos = cylinders[15].position + (cylinders[15].widthRadius * normalizedVec);
-		//smallCylinderPos.y += (theta * cylinders[0].heightRadius);
-
-		bumpCylinderHeightRadius = cylinders[15].heightRadius;
-		cylinders[16].widthRadius = bumpCylinderWidthRadius;
-		cylinders[16].heightRadius = bumpCylinderHeightRadius;
-		cylinders[17].widthRadius = bumpCylinderWidthRadius;
-		cylinders[17].heightRadius = bumpCylinderHeightRadius;
-		
-		// (theta, phi - 1)
-		normalizedVec = vec3( cos(phiMinusOne), 0.0, sin(phiMinusOne) );
-		cylinders[16].position = cylinders[15].position + (cylinders[15].widthRadius * normalizedVec);
-		//cylinders[1].position.y += (theta * cylinders[0].heightRadius);
-		// (theta, phi + 1)
-		normalizedVec = vec3( cos(phiPlusOne), 0.0, sin(phiPlusOne) );
-		cylinders[17].position = cylinders[15].position + (cylinders[15].widthRadius * normalizedVec);
-		//cylinders[2].position.y += (theta * cylinders[0].heightRadius);
-
-		d = CylinderIntersect( bumpCylinderWidthRadius, bumpCylinderHeightRadius, smallCylinderPos, rayOrigin, rayDirection, normal );
-		if (d < t)
-		{
-			t = d;
-			intersectionPoint = rayOrigin + (t * rayDirection);
-			intersectionNormal = normal;
-			intersectionMaterial = cylinders[15].material;
-			intersectionUV = (calcCylinderUV(intersectionPoint, cylinders[15].heightRadius, cylinders[15].position) + vec2(0.5, 0.5)) * vec2(-3, -1);
-			intersectionShapeIsClosed = FALSE;
-		}
-		
 	}
 
 
@@ -1316,7 +1006,7 @@ void SetupScene(void)
 	tetrahedron_planes[1] = vec4(vec3( 0.5773502588272095, 0.5773502588272095,-0.5773502588272095), 0.5);
 	tetrahedron_planes[2] = vec4(vec3( 0.5773502588272095,-0.5773502588272095, 0.5773502588272095), 0.5);
 	tetrahedron_planes[3] = vec4(vec3(-0.5773502588272095,-0.5773502588272095,-0.5773502588272095), 0.5);
-	
+ 	
 	// octahedron (rectangular bipyramid) 
 	octahedron_planes[0] = vec4(vec3( 0.5773502588272095, 0.5773502588272095, 0.5773502588272095), 0.6);
 	octahedron_planes[1] = vec4(vec3( 0.5773502588272095,-0.5773502588272095, 0.5773502588272095), 0.6);
@@ -1364,60 +1054,9 @@ void SetupScene(void)
 	icosahedron_planes[19] = vec4(vec3(0.9341723322868347, 0.35682210326194763, 0), 0.9);
 
 
-	// rgb values for common metals
-	// Gold: (1.000, 0.766, 0.336) / Aluminum: (0.913, 0.921, 0.925) / Copper: (0.955, 0.637, 0.538) / Silver: (0.972, 0.960, 0.915)
-	
-	Material marbleMaterial = Material(DIFFUSE, FALSE, vec3(0.3), vec3(0.0, 0.0, 0.0), 0.0, 1.0, 0.0, 0);
 	Material blueDiffuseMetalMaterial = Material(DIFFUSE_METAL, FALSE, vec3(0.0, 0.01, 0.035), vec3(0.0, 0.2, 1.0), 1.0, 0.0, 0.0, -1);
 
-
 	rectangles[0] = Rectangle(vec3(0, 0, 0), vec3(0,1,0), vec3(1,0,0), vec3(0,0,1), 100.0, 25.0, vec2(300, 300), blueDiffuseMetalMaterial);
-
-	vec3 frontCenterCylinderPos = vec3(0, 4, 0);
-	vec3 frontLeftCylinderPos = vec3(-5.5, 4, 0);
-	vec3 frontRightCylinderPos = vec3(5.5, 4, 0);
-	vec3 backCenterCylinderPos = vec3(0, 4.5,-6);
-	vec3 backLeftCylinderPos = vec3(-5.5, 4.5,-6);
-	vec3 backRightCylinderPos = vec3(5.5, 4.5,-6);
-
-	cylinders[0] = Cylinder(1.7, 3.0, frontCenterCylinderPos, vec2(1, 1), marbleMaterial);
-	cylinders[1] = Cylinder(0.0, 0.0, vec3(0), vec2(1, 1), marbleMaterial);
-	cylinders[2] = Cylinder(0.0, 0.0, vec3(0), vec2(1, 1), marbleMaterial);
-
-	cylinders[3] = Cylinder(1.7, 3.0, frontLeftCylinderPos, vec2(1, 1), marbleMaterial);
-	cylinders[4] = Cylinder(0.0, 0.0, vec3(0), vec2(1, 1), marbleMaterial);
-	cylinders[5] = Cylinder(0.0, 0.0, vec3(0), vec2(1, 1), marbleMaterial);
-
-	cylinders[6] = Cylinder(1.7, 3.0, frontRightCylinderPos, vec2(1, 1), marbleMaterial);
-	cylinders[7] = Cylinder(0.0, 0.0, vec3(0), vec2(1, 1), marbleMaterial);
-	cylinders[8] = Cylinder(0.0, 0.0, vec3(0), vec2(1, 1), marbleMaterial);
-
-	cylinders[9] = Cylinder(1.7, 4.5, backCenterCylinderPos, vec2(1, 1), marbleMaterial);
-	cylinders[10] = Cylinder(0.0, 0.0, vec3(0), vec2(1, 1), marbleMaterial);
-	cylinders[11] = Cylinder(0.0, 0.0, vec3(0), vec2(1, 1), marbleMaterial);
-
-	cylinders[12] = Cylinder(1.7, 4.5, backLeftCylinderPos, vec2(1, 1), marbleMaterial);
-	cylinders[13] = Cylinder(0.0, 0.0, vec3(0), vec2(1, 1), marbleMaterial);
-	cylinders[14] = Cylinder(0.0, 0.0, vec3(0), vec2(1, 1), marbleMaterial);
-
-	cylinders[15] = Cylinder(1.7, 4.5, backRightCylinderPos, vec2(1, 1), marbleMaterial);
-	cylinders[16] = Cylinder(0.0, 0.0, vec3(0), vec2(1, 1), marbleMaterial);
-	cylinders[17] = Cylinder(0.0, 0.0, vec3(0), vec2(1, 1), marbleMaterial);
-
-	boxes[0] = Box( frontCenterCylinderPos - vec3(1.9,4,1.9), frontCenterCylinderPos + vec3(1.9,-3,1.9), vec2(1, 1), marbleMaterial);
-	boxes[1] = Box( frontCenterCylinderPos - vec3(1.9,-2.5,1.9), frontCenterCylinderPos + vec3(1.9,3,1.9), vec2(1, 1), marbleMaterial);
-	boxes[2] = Box( frontLeftCylinderPos - vec3(1.9,4,1.9), frontLeftCylinderPos + vec3(1.9,-3,1.9), vec2(1, 1), marbleMaterial);
-	boxes[3] = Box( frontLeftCylinderPos - vec3(1.9,-2.5,1.9), frontLeftCylinderPos + vec3(1.9,3,1.9), vec2(1, 1), marbleMaterial);
-	boxes[4] = Box( frontRightCylinderPos - vec3(1.9,4,1.9), frontRightCylinderPos + vec3(1.9,-3,1.9), vec2(1, 1), marbleMaterial);
-	boxes[5] = Box( frontRightCylinderPos - vec3(1.9,-2.5,1.9), frontRightCylinderPos + vec3(1.9,3,1.9), vec2(1, 1), marbleMaterial);
-
-	boxes[6] = Box( backCenterCylinderPos - vec3(1.9,4.5,1.9), backCenterCylinderPos + vec3(1.9,-3.5,1.9), vec2(1, 1), marbleMaterial);
-	boxes[7] = Box( backCenterCylinderPos - vec3(1.9,-4.5,1.9), backCenterCylinderPos + vec3(1.9,5,1.9), vec2(1, 1), marbleMaterial);
-	boxes[8] = Box( backLeftCylinderPos - vec3(1.9,4.5,1.9), backLeftCylinderPos + vec3(1.9,-3.5,1.9), vec2(1, 1), marbleMaterial);
-	boxes[9] = Box( backLeftCylinderPos - vec3(1.9,-4.5,1.9), backLeftCylinderPos + vec3(1.9,5,1.9), vec2(1, 1), marbleMaterial);
-	boxes[10] = Box( backRightCylinderPos - vec3(1.9,4.5,1.9), backRightCylinderPos + vec3(1.9,-3.5,1.9), vec2(1, 1), marbleMaterial);
-	boxes[11] = Box( backRightCylinderPos - vec3(1.9,-4.5,1.9), backRightCylinderPos + vec3(1.9,5,1.9), vec2(1, 1), marbleMaterial);
-
 }
 
 
