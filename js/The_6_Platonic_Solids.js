@@ -9,7 +9,8 @@ let changeMaterialType = false;
 let matType = 0;
 
 let tetrahedron, cube, octahedron, dodecahedron, icosahedron;
-
+let ix32 = 0; // used in loop
+let ix9 = 0; // used in loop
 // triangular model 
 let vp0 = new THREE.Vector3(); // vertex positions data
 let vp1 = new THREE.Vector3();
@@ -29,7 +30,7 @@ let triangleDataTexture;
 let aabbDataTexture;
 let totalGeometryCount = 0;
 let total_number_of_triangles = 0;
-let totalWork;
+let aabbIndexList;
 let triangle_array = new Float32Array(2048 * 2048 * 4);
 // 2048 = width of texture, 2048 = height of texture, 4 = r,g,b, and a components
 let aabb_array = new Float32Array(2048 * 2048 * 4);
@@ -37,6 +38,33 @@ let aabb_array = new Float32Array(2048 * 2048 * 4);
 let triangleMaterialMarkers = [];
 let pathTracingMaterialList = [];
 
+// quadric shapes models
+let invMatrix = new THREE.Matrix4();
+let el; // elements of the invMatrix
+let shapes_array = new Float32Array(2048 * 2048 * 4);
+let shapesDataTexture;
+let shapes_aabb_array = new Float32Array(2048 * 2048 * 4);
+let shapes_aabbDataTexture;
+let aabbShapesIndexList;
+let shapeBoundingBox_minCorner = new THREE.Vector3();
+let shapeBoundingBox_maxCorner = new THREE.Vector3();
+let shapeBoundingBox_centroid = new THREE.Vector3();
+let boundingBoxMaterial = new THREE.MeshBasicMaterial();
+let boundingBoxMeshes = [];
+let boundingBoxGeometries = [];
+let sceneShapes = [];
+let frontCenterPillarBottom, frontCenterPillarTop;
+let frontLeftPillarBottom, frontLeftPillarTop;
+let frontRightPillarBottom, frontRightPillarTop;
+let backCenterPillarBottom, backCenterPillarTop;
+let backLeftPillarBottom, backLeftPillarTop;
+let backRightPillarBottom, backRightPillarTop;
+let frontCenterCylinderPos = new THREE.Vector3(0, 3.75, 0);
+let frontLeftCylinderPos = new THREE.Vector3(-5.5, 3.75, 0);
+let frontRightCylinderPos = new THREE.Vector3(5.5, 3.75, 0);
+let backCenterCylinderPos = new THREE.Vector3(0, 5,-6);
+let backLeftCylinderPos = new THREE.Vector3(-5.5, 4.5,-6);
+let backRightCylinderPos = new THREE.Vector3(5.5, 4.5,-6);
 
 
 function load_GLTF_Model() 
@@ -232,7 +260,7 @@ function initSceneData()
 	total_number_of_triangles = modelMesh.geometry.attributes.position.array.length / 9;
 	console.log("Triangle count:" + (total_number_of_triangles));
 
-	totalWork = new Uint32Array(total_number_of_triangles);
+	aabbIndexList = new Uint32Array(total_number_of_triangles);
 
 	let triangle_b_box_min = new THREE.Vector3();
 	let triangle_b_box_max = new THREE.Vector3();
@@ -360,7 +388,10 @@ function initSceneData()
 		triangle_b_box_min.copy(triangle_b_box_min.min(vp2));
 		triangle_b_box_max.copy(triangle_b_box_max.max(vp2));
 
-		triangle_b_box_centroid.copy(triangle_b_box_min).add(triangle_b_box_max).multiplyScalar(0.5);
+		// use the following for leaves that contain triangles (the default case for all glTF meshes)
+		triangle_b_box_centroid.copy(vp0).add(vp1).add(vp2).multiplyScalar(0.3333333333333333);
+		// or use the following for leaves that contain complete quadric shapes like spheres, cylinders, boxes, etc.
+		//triangle_b_box_centroid.copy(triangle_b_box_min).add(triangle_b_box_max).multiplyScalar(0.5);
 
 		aabb_array[ix9 + 0] = triangle_b_box_min.x;
 		aabb_array[ix9 + 1] = triangle_b_box_min.y;
@@ -372,21 +403,15 @@ function initSceneData()
 		aabb_array[ix9 + 7] = triangle_b_box_centroid.y;
 		aabb_array[ix9 + 8] = triangle_b_box_centroid.z;
 
-		totalWork[i] = i;
+		aabbIndexList[i] = i;
 	}
 
 
+	// the higher the number of BINS, the better quality of resulting BVH tree, but also increases build time
+	N_BINS = 1024;
 
-	console.time("BvhGeneration");
-	console.log("BvhGeneration...");
-
-	// Build the BVH acceleration structure, which places a bounding box ('root' of the tree) around all of the
-	// triangles of the entire mesh, then subdivides each box into 2 smaller boxes.  It continues until it reaches 1 triangle,
-	// which it then designates as a 'leaf'
-	BVH_Build_Iterative(totalWork, aabb_array);
-	//console.log(buildnodes);
-
-	console.timeEnd("BvhGeneration");
+	BVH_QuickBuild(aabbIndexList, aabb_array);
+	
 
 
 	triangleDataTexture = new THREE.DataTexture(
@@ -429,9 +454,317 @@ function initSceneData()
 	aabbDataTexture.needsUpdate = true;
 
 
+
+	frontCenterPillarBottom = new RayTracingShape("box");
+	frontCenterPillarBottom.uvwScale.set(1, 1, 1); // if checkered or using a texture, how many times should the uvw's repeat in the X axis / Y axis / Z axis?
+	frontCenterPillarBottom.transform.scale.set(1.9, 0.5, 1.9);
+	frontCenterPillarBottom.transform.position.set(0, 0.5, 0);
+	frontCenterPillarBottom.transform.rotation.set(0, 0, 0);
+	sceneShapes.push(frontCenterPillarBottom);
+
+	frontLeftPillarBottom = new RayTracingShape("box");
+	frontLeftPillarBottom.uvwScale.set(1,-1, 1); // if checkered or using a texture, how many times should the uvw's repeat in the X axis / Y axis / Z axis?
+	frontLeftPillarBottom.transform.scale.set(1.9, 0.5, 1.9);
+	frontLeftPillarBottom.transform.position.set(-5.5, 0.5, 0);
+	frontLeftPillarBottom.transform.rotation.set(0, 0, 0);
+	sceneShapes.push(frontLeftPillarBottom);
+
+	frontRightPillarBottom = new RayTracingShape("box");
+	frontRightPillarBottom.uvwScale.set(-1, -1, 1); // if checkered or using a texture, how many times should the uvw's repeat in the X axis / Y axis / Z axis?
+	frontRightPillarBottom.transform.scale.set(1.9, 0.5, 1.9);
+	frontRightPillarBottom.transform.position.set(5.5, 0.5, 0);
+	frontRightPillarBottom.transform.rotation.set(0, 0, 0);
+	sceneShapes.push(frontRightPillarBottom);
+
+	frontCenterPillarTop = new RayTracingShape("box");
+	frontCenterPillarTop.uvwScale.set(-1, 1, 1); // if checkered or using a texture, how many times should the uvw's repeat in the X axis / Y axis / Z axis?
+	frontCenterPillarTop.transform.scale.set(1.9, 0.25, 1.9);
+	frontCenterPillarTop.transform.position.set(0, 6.75, 0);
+	frontCenterPillarTop.transform.rotation.set(0, 0, 0);
+	sceneShapes.push(frontCenterPillarTop);
+
+	frontLeftPillarTop = new RayTracingShape("box");
+	frontLeftPillarTop.uvwScale.set(1, 1, -1); // if checkered or using a texture, how many times should the uvw's repeat in the X axis / Y axis / Z axis?
+	frontLeftPillarTop.transform.scale.set(1.9, 0.25, 1.9);
+	frontLeftPillarTop.transform.position.set(-5.5, 6.75, 0);
+	frontLeftPillarTop.transform.rotation.set(0, 0, 0);
+	sceneShapes.push(frontLeftPillarTop);
+
+	frontRightPillarTop = new RayTracingShape("box");
+	frontRightPillarTop.uvwScale.set(1, -1, -1); // if checkered or using a texture, how many times should the uvw's repeat in the X axis / Y axis / Z axis?
+	frontRightPillarTop.transform.scale.set(1.9, 0.25, 1.9);
+	frontRightPillarTop.transform.position.set(5.5, 6.75, 0);
+	frontRightPillarTop.transform.rotation.set(0, 0, 0);
+	sceneShapes.push(frontRightPillarTop);
+
+
+
+	backCenterPillarBottom = new RayTracingShape("box");
+	backCenterPillarBottom.uvwScale.set(1, 1, 1); // if checkered or using a texture, how many times should the uvw's repeat in the X axis / Y axis / Z axis?
+	backCenterPillarBottom.transform.scale.set(1.9, 0.5, 1.9);
+	backCenterPillarBottom.transform.position.set(0, 0.5, -6);
+	backCenterPillarBottom.transform.rotation.set(0, 0, 0);
+	sceneShapes.push(backCenterPillarBottom);
+
+	backLeftPillarBottom = new RayTracingShape("box");
+	backLeftPillarBottom.uvwScale.set(1,-1, 1); // if checkered or using a texture, how many times should the uvw's repeat in the X axis / Y axis / Z axis?
+	backLeftPillarBottom.transform.scale.set(1.9, 0.5, 1.9);
+	backLeftPillarBottom.transform.position.set(-5.5, 0.5, -6);
+	backLeftPillarBottom.transform.rotation.set(0, 0, 0);
+	sceneShapes.push(backLeftPillarBottom);
+
+	backRightPillarBottom = new RayTracingShape("box");
+	backRightPillarBottom.uvwScale.set(-1, -1, 1); // if checkered or using a texture, how many times should the uvw's repeat in the X axis / Y axis / Z axis?
+	backRightPillarBottom.transform.scale.set(1.9, 0.5, 1.9);
+	backRightPillarBottom.transform.position.set(5.5, 0.5, -6);
+	backRightPillarBottom.transform.rotation.set(0, 0, 0);
+	sceneShapes.push(backRightPillarBottom);
+
+	backCenterPillarTop = new RayTracingShape("box");
+	backCenterPillarTop.uvwScale.set(-1, 1, 1); // if checkered or using a texture, how many times should the uvw's repeat in the X axis / Y axis / Z axis?
+	backCenterPillarTop.transform.scale.set(1.9, 0.25, 1.9);
+	backCenterPillarTop.transform.position.set(0, 9.25, -6);
+	backCenterPillarTop.transform.rotation.set(0, 0, 0);
+	sceneShapes.push(backCenterPillarTop);
+
+	backLeftPillarTop = new RayTracingShape("box");
+	backLeftPillarTop.uvwScale.set(1, 1, -1); // if checkered or using a texture, how many times should the uvw's repeat in the X axis / Y axis / Z axis?
+	backLeftPillarTop.transform.scale.set(1.9, 0.25, 1.9);
+	backLeftPillarTop.transform.position.set(-5.5, 9.25, -6);
+	backLeftPillarTop.transform.rotation.set(0, 0, 0);
+	sceneShapes.push(backLeftPillarTop);
+
+	backRightPillarTop = new RayTracingShape("box");
+	backRightPillarTop.uvwScale.set(1, -1, -1); // if checkered or using a texture, how many times should the uvw's repeat in the X axis / Y axis / Z axis?
+	backRightPillarTop.transform.scale.set(1.9, 0.25, 1.9);
+	backRightPillarTop.transform.position.set(5.5, 9.25, -6);
+	backRightPillarTop.transform.rotation.set(0, 0, 0);
+	sceneShapes.push(backRightPillarTop);
+
+	
+	let positionAroundPillar = new THREE.Vector3();
+
+	let frontCenterPillarCylinders = [];
+
+	for (let i = 0, angle = 0; i < 36; i++, angle += ((Math.PI * 2) / 36))
+	{
+		frontCenterPillarCylinders[i] = new RayTracingShape("cylinder");
+		frontCenterPillarCylinders[i].transform.scale.set(0.164, 2.75, 0.164);
+		positionAroundPillar.set(Math.cos(angle) * (1.9 - 0.328), 0, Math.sin(angle) * (1.9 - 0.328));
+		positionAroundPillar.add(frontCenterCylinderPos);
+		frontCenterPillarCylinders[i].transform.position.copy(positionAroundPillar);
+		sceneShapes.push(frontCenterPillarCylinders[i]);
+	}
+
+	let frontLeftPillarCylinders = [];
+
+	for (let i = 0, angle = 0; i < 36; i++, angle += ((Math.PI * 2) / 36))
+	{
+		frontLeftPillarCylinders[i] = new RayTracingShape("cylinder");
+		frontLeftPillarCylinders[i].transform.scale.set(0.164, 2.75, 0.164);
+		positionAroundPillar.set(Math.cos(angle) * (1.9 - 0.328), 0, Math.sin(angle) * (1.9 - 0.328));
+		positionAroundPillar.add(frontLeftCylinderPos);
+		frontLeftPillarCylinders[i].transform.position.copy(positionAroundPillar);
+		sceneShapes.push(frontLeftPillarCylinders[i]);
+	}
+	
+	let frontRightPillarCylinders = [];
+
+	for (let i = 0, angle = 0; i < 36; i++, angle += ((Math.PI * 2) / 36))
+	{
+		frontRightPillarCylinders[i] = new RayTracingShape("cylinder");
+		frontRightPillarCylinders[i].transform.scale.set(0.164, 2.75, 0.164);
+		positionAroundPillar.set(Math.cos(angle) * (1.9 - 0.328), 0, Math.sin(angle) * (1.9 - 0.328));
+		positionAroundPillar.add(frontRightCylinderPos);
+		frontRightPillarCylinders[i].transform.position.copy(positionAroundPillar);
+		sceneShapes.push(frontRightPillarCylinders[i]);
+	}
+
+	let backCenterPillarCylinders = [];
+
+	for (let i = 0, angle = 0; i < 36; i++, angle += ((Math.PI * 2) / 36))
+	{
+		backCenterPillarCylinders[i] = new RayTracingShape("cylinder");
+		backCenterPillarCylinders[i].transform.scale.set(0.164, 4, 0.164);
+		positionAroundPillar.set(Math.cos(angle) * (1.9 - 0.328), 0, Math.sin(angle) * (1.9 - 0.328));
+		positionAroundPillar.add(backCenterCylinderPos);
+		backCenterPillarCylinders[i].transform.position.copy(positionAroundPillar);
+		sceneShapes.push(backCenterPillarCylinders[i]);
+	}
+
+	let backLeftPillarCylinders = [];
+
+	for (let i = 0, angle = 0; i < 36; i++, angle += ((Math.PI * 2) / 36))
+	{
+		backLeftPillarCylinders[i] = new RayTracingShape("cylinder");
+		backLeftPillarCylinders[i].transform.scale.set(0.164, 4, 0.164);
+		positionAroundPillar.set(Math.cos(angle) * (1.9 - 0.328), 0, Math.sin(angle) * (1.9 - 0.328));
+		positionAroundPillar.add(backLeftCylinderPos);
+		backLeftPillarCylinders[i].transform.position.copy(positionAroundPillar);
+		sceneShapes.push(backLeftPillarCylinders[i]);
+	}
+	
+	let backRightPillarCylinders = [];
+
+	for (let i = 0, angle = 0; i < 36; i++, angle += ((Math.PI * 2) / 36))
+	{
+		backRightPillarCylinders[i] = new RayTracingShape("cylinder");
+		backRightPillarCylinders[i].transform.scale.set(0.164, 4, 0.164);
+		positionAroundPillar.set(Math.cos(angle) * (1.9 - 0.328), 0, Math.sin(angle) * (1.9 - 0.328));
+		positionAroundPillar.add(backRightCylinderPos);
+		backRightPillarCylinders[i].transform.position.copy(positionAroundPillar);
+		sceneShapes.push(backRightPillarCylinders[i]);
+	}
+	
+
+	console.log("Shape count: " + sceneShapes.length);
+
+
+	aabbShapesIndexList = new Uint32Array(sceneShapes.length);
+
+
+	for (let i = 0; i < sceneShapes.length; i++) 
+	{
+		ix32 = i * 32;
+		ix9 = i * 9;
+
+		sceneShapes[i].transform.updateMatrixWorld(true); // 'true' forces immediate matrix update
+		invMatrix.copy(sceneShapes[i].transform.matrixWorld).invert();
+		el = invMatrix.elements;
+
+		//slot 0                       Shape transform Matrix 4x4 (16 elements total)
+		shapes_array[ix32 + 0] = el[0]; // r or x // shape transform Matrix element[0]
+		shapes_array[ix32 + 1] = el[1]; // g or y // shape transform Matrix element[1] 
+		shapes_array[ix32 + 2] = el[2]; // b or z // shape transform Matrix element[2]
+		shapes_array[ix32 + 3] = el[3]; // a or w // shape transform Matrix element[3]
+
+		//slot 1
+		shapes_array[ix32 + 4] = el[4]; // r or x // shape transform Matrix element[4]
+		shapes_array[ix32 + 5] = el[5]; // g or y // shape transform Matrix element[5]
+		shapes_array[ix32 + 6] = el[6]; // b or z // shape transform Matrix element[6]
+		shapes_array[ix32 + 7] = el[7]; // a or w // shape transform Matrix element[7]
+
+		//slot 2
+		shapes_array[ix32 + 8] = el[8]; // r or x // shape transform Matrix element[8]
+		shapes_array[ix32 + 9] = el[9]; // g or y // shape transform Matrix element[9]
+		shapes_array[ix32 + 10] = el[10]; // b or z // shape transform Matrix element[10]
+		shapes_array[ix32 + 11] = el[11]; // a or w // shape transform Matrix element[11]
+
+		//slot 3
+		shapes_array[ix32 + 12] = el[12]; // r or x // shape transform Matrix element[12]
+		shapes_array[ix32 + 13] = el[13]; // g or y // shape transform Matrix element[13]
+		shapes_array[ix32 + 14] = el[14]; // b or z // shape transform Matrix element[14]
+		shapes_array[ix32 + 15] = el[15]; // a or w // shape transform Matrix element[15]
+
+		//slot 4
+		if (sceneShapes[i].type == "box")
+			shapes_array[ix32 + 16] = 0; // r or x // shape type id#  (0: box, 1: sphere, 2: cylinder, 3: cone, 4: paraboloid, etc)
+		else if (sceneShapes[i].type == "sphere")
+			shapes_array[ix32 + 16] = 1; // r or x // shape type id#  (0: box, 1: sphere, 2: cylinder, 3: cone, 4: paraboloid, etc)
+		else if (sceneShapes[i].type == "cylinder")
+			shapes_array[ix32 + 16] = 2; // r or x // shape type id#  (0: box, 1: sphere, 2: cylinder, 3: cone, 4: paraboloid, etc)
+		
+		// default = 1 = Diffuse material
+		shapes_array[ix32 + 17] = 1; // g or y // material type id# (0: LIGHT, 1: DIFF, 2: REFR, 3: SPEC, 4: COAT, etc)
+		if (sceneShapes[i].material.metalness > 0.0)
+			shapes_array[ix32 + 17] = 3; // g or y // material type id# (0: LIGHT, 1: DIFF, 2: REFR, 3: SPEC, 4: COAT, etc)
+		if (sceneShapes[i].material.clearcoat > 0.0)
+			shapes_array[ix32 + 17] = 4; // g or y // material type id# (0: LIGHT, 1: DIFF, 2: REFR, 3: SPEC, 4: COAT, etc)
+		if (sceneShapes[i].material.opacity < 1.0)
+			shapes_array[ix32 + 17] = 2; // g or y // material type id# (0: LIGHT, 1: DIFF, 2: REFR, 3: SPEC, 4: COAT, etc)
+		shapes_array[ix32 + 18] = sceneShapes[i].material.metalness; // b or z // material Metalness
+		shapes_array[ix32 + 19] = sceneShapes[i].material.roughness; // a or w // material Roughness
+
+		//slot 5
+		shapes_array[ix32 + 20] = sceneShapes[i].material.color.r; // r or x // material albedo color R (if LIGHT, this is also its emissive color R)
+		shapes_array[ix32 + 21] = sceneShapes[i].material.color.g; // g or y // material albedo color G (if LIGHT, this is also its emissive color G)
+		shapes_array[ix32 + 22] = sceneShapes[i].material.color.b; // b or z // material albedo color B (if LIGHT, this is also its emissive color B)
+		shapes_array[ix32 + 23] = sceneShapes[i].material.opacity; // a or w // material Opacity (Alpha)
+
+		//slot 6
+		shapes_array[ix32 + 24] = sceneShapes[i].material.ior; // r or x // material Index of Refraction(IoR)
+		shapes_array[ix32 + 25] = sceneShapes[i].material.clearcoat; // g or y // material ClearCoat Amount
+		shapes_array[ix32 + 26] = sceneShapes[i].material.clearcoatRoughness; // b or z // material ClearCoat Roughness (0.0-1.0, default: 0.0)
+		shapes_array[ix32 + 27] = sceneShapes[i].textureID; // integer number of texture to use / default is -1 (no texture)
+
+		//slot 7
+		shapes_array[ix32 + 28] = sceneShapes[i].uvwScale.x; // r or x // 3D uvw scale, u component
+		shapes_array[ix32 + 29] = sceneShapes[i].uvwScale.y; // g or y // 3D uvw scale, v component
+		shapes_array[ix32 + 30] = sceneShapes[i].uvwScale.z; // b or z // 3D uvw scale, w component
+		shapes_array[ix32 + 31] = 0; // a or w // material data (unused)
+
+
+		boundingBoxGeometries[i] = new THREE.BoxGeometry(2, 2, 2); // Box with Unit Radius of 1, so a Diameter(length) of 2 in each dimension / min:(-1,-1,-1), max(+1,+1,+1)
+		boundingBoxMeshes[i] = new THREE.Mesh(boundingBoxGeometries[i], boundingBoxMaterial);
+
+		boundingBoxMeshes[i].geometry.applyMatrix4(sceneShapes[i].transform.matrixWorld);
+		boundingBoxMeshes[i].geometry.computeBoundingBox();
+
+		shapeBoundingBox_minCorner.copy(boundingBoxMeshes[i].geometry.boundingBox.min);
+		shapeBoundingBox_maxCorner.copy(boundingBoxMeshes[i].geometry.boundingBox.max);
+		boundingBoxMeshes[i].geometry.boundingBox.getCenter(shapeBoundingBox_centroid);
+
+
+		shapes_aabb_array[ix9 + 0] = shapeBoundingBox_minCorner.x;
+		shapes_aabb_array[ix9 + 1] = shapeBoundingBox_minCorner.y;
+		shapes_aabb_array[ix9 + 2] = shapeBoundingBox_minCorner.z;
+		shapes_aabb_array[ix9 + 3] = shapeBoundingBox_maxCorner.x;
+		shapes_aabb_array[ix9 + 4] = shapeBoundingBox_maxCorner.y;
+		shapes_aabb_array[ix9 + 5] = shapeBoundingBox_maxCorner.z;
+		shapes_aabb_array[ix9 + 6] = shapeBoundingBox_centroid.x;
+		shapes_aabb_array[ix9 + 7] = shapeBoundingBox_centroid.y;
+		shapes_aabb_array[ix9 + 8] = shapeBoundingBox_centroid.z;
+
+		aabbShapesIndexList[i] = i;
+	} // end for (let i = 0; i < sceneShapes.length; i++)
+
+
+	// the higher the number of BINS, the better quality of resulting BVH tree, but also increases build time
+	N_BINS = 1024;
+	
+	BVH_QuickBuild(aabbShapesIndexList, shapes_aabb_array);
+
+
+	shapesDataTexture = new THREE.DataTexture(shapes_array,
+		2048,
+		2048,
+		THREE.RGBAFormat,
+		THREE.FloatType,
+		THREE.Texture.DEFAULT_MAPPING,
+		THREE.ClampToEdgeWrapping,
+		THREE.ClampToEdgeWrapping,
+		THREE.NearestFilter,
+		THREE.NearestFilter,
+		1,
+		THREE.NoColorSpace);
+
+	shapesDataTexture.flipY = false;
+	shapesDataTexture.generateMipmaps = false;
+	shapesDataTexture.needsUpdate = true;
+
+	shapes_aabbDataTexture = new THREE.DataTexture(shapes_aabb_array,
+		2048,
+		2048,
+		THREE.RGBAFormat,
+		THREE.FloatType,
+		THREE.Texture.DEFAULT_MAPPING,
+		THREE.ClampToEdgeWrapping,
+		THREE.ClampToEdgeWrapping,
+		THREE.NearestFilter,
+		THREE.NearestFilter,
+		1,
+		THREE.NoColorSpace);
+
+	shapes_aabbDataTexture.flipY = false;
+	shapes_aabbDataTexture.generateMipmaps = false;
+	shapes_aabbDataTexture.needsUpdate = true;
+
+
 	// scene/demo-specific uniforms go here
 	rayTracingUniforms.uTriangleTexture = { value: triangleDataTexture };
-	rayTracingUniforms.uAABBTexture = { value: aabbDataTexture };   
+	rayTracingUniforms.uAABBTexture = { value: aabbDataTexture };
+	rayTracingUniforms.uShapes_DataTexture = { value: shapesDataTexture };
+	rayTracingUniforms.uShapes_AABB_DataTexture = { value: shapes_aabbDataTexture };
 	rayTracingUniforms.uMarbleTexture = { value: marbleTexture };
 	rayTracingUniforms.uMaterialColor = { value: new THREE.Color() };
 	rayTracingUniforms.uTetrahedronInvMatrix = { value: new THREE.Matrix4() };
