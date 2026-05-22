@@ -395,19 +395,12 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 	// transform ray into Unit Box's object space
 	rObjOrigin = vec3( uBoxInvMatrix * vec4(rayOrigin, 1.0) );
 	rObjDirection = vec3( uBoxInvMatrix * vec4(rayDirection, 0.0) );
-	d = UnitBoxIntersect( rObjOrigin, rObjDirection );
+	d = UnitBoxIntersect( rObjOrigin, rObjDirection, normal );
 	if (d < t)
 	{
 		t = d;
 		intersectionPoint = rObjOrigin + (t * rObjDirection); // intersection in box's object space, vec3(-1,-1,-1) to vec3(+1,+1,+1)
 		vec3 boxScale = vec3(4,4,8);
-		// start out with default Z normal of (0,0,-1) or (0,0,+1)
-		normal = vec3(0, 0, intersectionPoint.z);
-		if (abs(intersectionPoint.x) > abs(intersectionPoint.y) && abs(intersectionPoint.x) >= abs(intersectionPoint.z))
-			normal = vec3(intersectionPoint.x, 0, 0);	
-		else if (abs(intersectionPoint.y) > abs(intersectionPoint.x) && abs(intersectionPoint.y) >= abs(intersectionPoint.z))
-			normal = vec3(0, intersectionPoint.y, 0);
-			
 		intersectionNormal = transpose(mat3(uBoxInvMatrix)) * normal;
 		intersectionMaterial = boxes[0].material;
 		intersectionUV = calcUnitBoxUV(intersectionPoint, normal, boxScale) * boxes[0].uvScale;
