@@ -698,26 +698,26 @@ float UnitConeIntersect( float apexRadius, vec3 ro, vec3 rd, out vec3 n )
 	k = clamp(k, 0.01, 1.0);
 	float j = 1.0 / k;
 	float h = j * 2.0 - 1.0;
-	ro.y -= h;// this truncates the top half of the double-cone, leaving a single cone with apex at top
+	// the '(ro.y - h)' below truncates the top half of the double-cone, leaving a single cone with apex at top
 					// (k * 0.25) makes the normal cone's bottom circular base have a unit radius of 1.0
 	float a = j * dot(rd.xz, rd.xz) - ((k * 0.25) * rd.y * rd.y);
-    	float b = 2.0 * ( j * dot(rd.xz, ro.xz) - ((k * 0.25) * rd.y * ro.y) );
-    	float c = j * dot(ro.xz, ro.xz) - ((k * 0.25) * ro.y * ro.y);
+    	float b = 2.0 * ( j * dot(rd.xz, ro.xz) - ((k * 0.25) * rd.y * (ro.y - h)) );
+    	float c = j * dot(ro.xz, ro.xz) - ((k * 0.25) * (ro.y - h) * (ro.y - h));
 	solveQuadratic(a, b, c, t0, t1);
 	
 	// first, try t0
 	hitPoint = ro + (rd * t0);
-	if (t0 > 0.0 && abs(hitPoint.y + h) <= 1.0)
+	if (t0 > 0.0 && abs(hitPoint.y) <= 1.0)
 	{
-		n = vec3(j * hitPoint.x, (k * 0.25) * (-hitPoint.y), j * hitPoint.z);
+		n = vec3(j * hitPoint.x, (k * 0.25) * (h - hitPoint.y), j * hitPoint.z);
 		n = dot(rd, n) < 0.0 ? n : -n;
 		return t0;
 	}
 	// if t0 was invalid, try t1
 	hitPoint = ro + (rd * t1);
-	if (t1 > 0.0 && abs(hitPoint.y + h) <= 1.0)
+	if (t1 > 0.0 && abs(hitPoint.y) <= 1.0)
 	{
-		n = vec3(j * hitPoint.x, (k * 0.25) * (-hitPoint.y), j * hitPoint.z);
+		n = vec3(j * hitPoint.x, (k * 0.25) * (h - hitPoint.y), j * hitPoint.z);
 		n = dot(rd, n) < 0.0 ? n : -n;
 		return t1;
 	}
@@ -842,14 +842,14 @@ float UnitSolidAngleIntersect( vec3 ro, vec3 rd, out vec3 n )
 	if (t0 > 0.0 && t0 < t && hitPoint.y >= -0.789 && hitPoint.y < 1.0)
 	{
 		t = t0;
-		n = vec3(hitPoint.x, (h - hitPoint.y) * k, hitPoint.z);
+		n = vec3(hitPoint.x, k * (h - hitPoint.y), hitPoint.z);
 	}
 	// if t0 was invalid, try t1
 	hitPoint = ro + rd * t1;
 	if (t1 > 0.0 && t1 < t && hitPoint.y >= -0.789 && hitPoint.y < 1.0)
 	{
 		t = t1;
-		n = vec3(hitPoint.x, (h - hitPoint.y) * k, hitPoint.z);
+		n = vec3(hitPoint.x, k * (h - hitPoint.y), hitPoint.z);
 	}
 
 	return t;
@@ -1190,8 +1190,9 @@ float UnitConeCapsuleIntersect( float apexRadius, float endCapsYDistFromCenter, 
 
 THREE.ShaderChunk[ 'raytracing_unit_box_intersect' ] = `
 
-float UnitBoxIntersect( vec3 ro, vec3 rd )
+float UnitBoxIntersect( vec3 ro, vec3 rd, out vec3 normal )
 {
+	vec3 hitPoint, absPoint;
 	vec3 invDir = 1.0 / rd;
 	vec3 near = (vec3(-1) - ro) * invDir; // unit radius box: vec3(-1,-1,-1) min corner
 	vec3 far  = (vec3( 1) - ro) * invDir;  // unit radius box: vec3(+1,+1,+1) max corner
@@ -1206,11 +1207,27 @@ float UnitBoxIntersect( vec3 ro, vec3 rd )
 
 	if (t0 > 0.0)
 	{
+		hitPoint = ro + (t0 * rd); // intersection in box's object space, vec3(-1,-1,-1) to vec3(+1,+1,+1)
+		absPoint = abs(hitPoint);
+		// start out with default Z normal of (0,0,-1) or (0,0,+1)
+		normal = vec3(0, 0, hitPoint.z);
+		if (absPoint.x > absPoint.y && absPoint.x >= absPoint.z)
+			normal = vec3(hitPoint.x, 0, 0);	
+		else if (absPoint.y > absPoint.x && absPoint.y >= absPoint.z)
+			normal = vec3(0, hitPoint.y, 0);
 		//n = -sign(rd) * step(tmin.yzx, tmin) * step(tmin.zxy, tmin);
 		return t0;
 	}
 	if (t1 > 0.0)
 	{
+		hitPoint = ro + (t1 * rd); // intersection in box's object space, vec3(-1,-1,-1) to vec3(+1,+1,+1)
+		absPoint = abs(hitPoint);
+		// start out with default Z normal of (0,0,-1) or (0,0,+1)
+		normal = vec3(0, 0, hitPoint.z);
+		if (absPoint.x > absPoint.y && absPoint.x >= absPoint.z)
+			normal = vec3(hitPoint.x, 0, 0);	
+		else if (absPoint.y > absPoint.x && absPoint.y >= absPoint.z)
+			normal = vec3(0, hitPoint.y, 0);
 		//n = -sign(rd) * step(tmax, tmax.yzx) * step(tmax, tmax.zxy);
 		return t1;
 	}
