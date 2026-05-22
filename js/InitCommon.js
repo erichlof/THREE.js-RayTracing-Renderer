@@ -268,8 +268,10 @@ function RayTracingShape(type)
 	this.material.isCheckered = 0.0; // range: either 0.0 (not checkered) or 1.0 (checkered) / default is 0.0 (not checkered)
 	this.material.color2 = new THREE.Color(0.0, 0.0, 0.0); // .color2 is used if this shape will have a checkered material
 
-	this.uvScale = new THREE.Vector2(1, 1);
-
+	this.uvScale = new THREE.Vector2(1, 1); // the usual 2D uv's
+	this.uvwScale = new THREE.Vector3(1, 1, 1); // 3D uvw's / useful for boxes with tri-planar mapping
+	this.textureID = -1.0; // integer number (rounded float) specifying which texture to use / default is -1.0 (no texture),
+			       // then 0.0 (use 1st texture), 1.0 (use 2nd texture), 2.0 (use 3rd texture), etc.
 	return this;
 }
 
