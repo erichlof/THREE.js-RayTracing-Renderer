@@ -16,11 +16,10 @@ vec3 rayOrigin, rayDirection;
 vec3 intersectionNormal;
 vec2 intersectionUV;
 int intersectionTextureID;
-int intersectionShapeIsClosed;
 
 struct Material { int type; int isCheckered; vec3 color; vec3 color2; float metalness; float roughness; float IoR; int textureID; };
-struct BoxInterior { vec3 minCorner; vec3 maxCorner; vec2 uvScale; Material material; };
-struct Sphere { float radius; vec3 position; vec2 uvScale; Material material; };
+struct BoxInterior { vec3 minCorner; vec3 maxCorner; vec2 uvScale; };
+struct Sphere { float radius; vec3 position; vec2 uvScale; };
 struct SpotLightSphere { float radius; vec3 position; vec3 direction; vec3 color; };
 
 Material intersectionMaterial;
@@ -42,6 +41,15 @@ SpotLightSphere spotlightSpheres[N_SPOTLIGHT_SPHERES];
 float SceneIntersect( int isShadowRay )
 //---------------------------------------------------------------------------------------
 {
+	Material wallMaterial = Material(DIFFUSE, FALSE, vec3(0.3, 0.6, 1.0), vec3(0), 0.0, 1.0, 1.4, -1);
+	Material darkGoldMetalMaterial = Material(METAL, FALSE, vec3(1.0, 0.5, 0.3) * 0.1, vec3(0), 1.0, 0.5, 1.4, -1);
+	Material medGoldMetalMaterial = Material(METAL, FALSE, vec3(1.0, 0.4, 0.2) * 0.6, vec3(0), 1.0, 0.5, 1.4, -1);
+	Material lightMetalMaterial = Material(METAL, FALSE, vec3(1.0, 0.7, 0.5), vec3(0), 1.0, 0.5, 1.4, -1);
+	
+	Material redMaterial = Material(DIFFUSE, FALSE, vec3(0.2, 0.01, 0.01), vec3(0), 0.0, 1.0, 1.4, -1);
+	Material greenMaterial = Material(DIFFUSE, FALSE, vec3(0.01, 0.1, 0.01), vec3(0), 0.0, 1.0, 1.4, -1);
+	Material blueMaterial = Material(DIFFUSE, FALSE, vec3(0.01, 0.01, 0.2), vec3(0), 0.0, 1.0, 1.4, -1);
+	Material lightCasingMaterial = Material(DIFFUSE, FALSE, vec3(1.0, 1.6, 2.0), vec3(0), 0.0, 1.0, 1.4, -1);
 	
 	vec3 rObjOrigin, rObjDirection; 
 	vec3 intersectionPoint, normal;
@@ -50,35 +58,16 @@ float SceneIntersect( int isShadowRay )
 	float u, v;
 	int isRayExiting = FALSE;
 
-
-	// Room (Box Interior)
-	d = BoxInteriorIntersect(boxInteriors[0].minCorner, boxInteriors[0].maxCorner, rayOrigin, rayDirection, normal);
-	if (d < t)
-	{
-		t = d;
-		intersectionNormal = normal;
-		intersectionMaterial = boxInteriors[0].material;
-		if (intersectionNormal == vec3(0,1,0))
-			intersectionMaterial.color = vec3(0.001, 0.001, 0.1);
-		else if (intersectionNormal == vec3(0,-1,0))
-			intersectionMaterial.color *= vec3(1,1.5,2);
-		else if (intersectionNormal == vec3(0,0,1) || intersectionNormal == vec3(0,0,-1))
-		{
-			intersectionMaterial.type = PERFECT_MIRROR;
-			intersectionMaterial.color = vec3(0.8);
-		}
-		intersectionShapeIsClosed = FALSE;
-	}
-
 	
+	
+	// ceiling light casings
 	d = SphereIntersect( spheres[0].radius, spheres[0].position, rayOrigin, rayDirection );
 	if (d < t)
 	{
 		t = d;
 		intersectionPoint = rayOrigin + (t * rayDirection);
 		intersectionNormal = intersectionPoint - spheres[0].position;
-		intersectionMaterial = spheres[0].material;
-		intersectionShapeIsClosed = TRUE;
+		intersectionMaterial = lightCasingMaterial;
 	}
 	d = SphereIntersect( spheres[1].radius, spheres[1].position, rayOrigin, rayDirection );
 	if (d < t)
@@ -86,8 +75,7 @@ float SceneIntersect( int isShadowRay )
 		t = d;
 		intersectionPoint = rayOrigin + (t * rayDirection);
 		intersectionNormal = intersectionPoint - spheres[1].position;
-		intersectionMaterial = spheres[1].material;
-		intersectionShapeIsClosed = TRUE;
+		intersectionMaterial = lightCasingMaterial;
 	}
 	d = SphereIntersect( spheres[2].radius, spheres[2].position, rayOrigin, rayDirection );
 	if (d < t)
@@ -95,8 +83,7 @@ float SceneIntersect( int isShadowRay )
 		t = d;
 		intersectionPoint = rayOrigin + (t * rayDirection);
 		intersectionNormal = intersectionPoint - spheres[2].position;
-		intersectionMaterial = spheres[2].material;
-		intersectionShapeIsClosed = TRUE;
+		intersectionMaterial = lightCasingMaterial;
 	}
 	d = SphereIntersect( spheres[3].radius, spheres[3].position, rayOrigin, rayDirection );
 	if (d < t)
@@ -104,8 +91,7 @@ float SceneIntersect( int isShadowRay )
 		t = d;
 		intersectionPoint = rayOrigin + (t * rayDirection);
 		intersectionNormal = intersectionPoint - spheres[3].position;
-		intersectionMaterial = spheres[3].material;
-		intersectionShapeIsClosed = TRUE;
+		intersectionMaterial = lightCasingMaterial;
 	}
 	d = SphereIntersect( spheres[4].radius, spheres[4].position, rayOrigin, rayDirection );
 	if (d < t)
@@ -113,8 +99,7 @@ float SceneIntersect( int isShadowRay )
 		t = d;
 		intersectionPoint = rayOrigin + (t * rayDirection);
 		intersectionNormal = intersectionPoint - spheres[4].position;
-		intersectionMaterial = spheres[4].material;
-		intersectionShapeIsClosed = TRUE;
+		intersectionMaterial = lightCasingMaterial;
 	}
 	d = SphereIntersect( spheres[5].radius, spheres[5].position, rayOrigin, rayDirection );
 	if (d < t)
@@ -122,17 +107,17 @@ float SceneIntersect( int isShadowRay )
 		t = d;
 		intersectionPoint = rayOrigin + (t * rayDirection);
 		intersectionNormal = intersectionPoint - spheres[5].position;
-		intersectionMaterial = spheres[5].material;
-		intersectionShapeIsClosed = TRUE;
+		intersectionMaterial = lightCasingMaterial;
 	}
+
+	// various metal and diffuse spheres
 	d = SphereIntersect( spheres[6].radius, spheres[6].position, rayOrigin, rayDirection );
 	if (d < t)
 	{
 		t = d;
 		intersectionPoint = rayOrigin + (t * rayDirection);
 		intersectionNormal = intersectionPoint - spheres[6].position;
-		intersectionMaterial = spheres[6].material;
-		intersectionShapeIsClosed = TRUE;
+		intersectionMaterial = medGoldMetalMaterial;
 	}
 	d = SphereIntersect( spheres[7].radius, spheres[7].position, rayOrigin, rayDirection );
 	if (d < t)
@@ -140,8 +125,7 @@ float SceneIntersect( int isShadowRay )
 		t = d;
 		intersectionPoint = rayOrigin + (t * rayDirection);
 		intersectionNormal = intersectionPoint - spheres[7].position;
-		intersectionMaterial = spheres[7].material;
-		intersectionShapeIsClosed = TRUE;
+		intersectionMaterial = darkGoldMetalMaterial;
 	}
 	d = SphereIntersect( spheres[8].radius, spheres[8].position, rayOrigin, rayDirection );
 	if (d < t)
@@ -149,8 +133,7 @@ float SceneIntersect( int isShadowRay )
 		t = d;
 		intersectionPoint = rayOrigin + (t * rayDirection);
 		intersectionNormal = intersectionPoint - spheres[8].position;
-		intersectionMaterial = spheres[8].material;
-		intersectionShapeIsClosed = TRUE;
+		intersectionMaterial = lightMetalMaterial;
 	}
 	d = SphereIntersect( spheres[9].radius, spheres[9].position, rayOrigin, rayDirection );
 	if (d < t)
@@ -158,8 +141,7 @@ float SceneIntersect( int isShadowRay )
 		t = d;
 		intersectionPoint = rayOrigin + (t * rayDirection);
 		intersectionNormal = intersectionPoint - spheres[9].position;
-		intersectionMaterial = spheres[9].material;
-		intersectionShapeIsClosed = TRUE;
+		intersectionMaterial = redMaterial;
 	}
 	d = SphereIntersect( spheres[10].radius, spheres[10].position, rayOrigin, rayDirection );
 	if (d < t)
@@ -167,8 +149,7 @@ float SceneIntersect( int isShadowRay )
 		t = d;
 		intersectionPoint = rayOrigin + (t * rayDirection);
 		intersectionNormal = intersectionPoint - spheres[10].position;
-		intersectionMaterial = spheres[10].material;
-		intersectionShapeIsClosed = TRUE;
+		intersectionMaterial = greenMaterial;
 	}
 	d = SphereIntersect( spheres[11].radius, spheres[11].position, rayOrigin, rayDirection );
 	if (d < t)
@@ -176,52 +157,52 @@ float SceneIntersect( int isShadowRay )
 		t = d;
 		intersectionPoint = rayOrigin + (t * rayDirection);
 		intersectionNormal = intersectionPoint - spheres[11].position;
-		intersectionMaterial = spheres[11].material;
-		intersectionShapeIsClosed = TRUE;
+		intersectionMaterial = blueMaterial;
 	}
 
 	// SPOTLIGHT SPHERES
+
 	d = SphereIntersect( spotlightSpheres[0].radius, spotlightSpheres[0].position, rayOrigin, rayDirection );
 	if (d < t)
 	{
 		t = d;
 		intersectionMaterial.type = SPOT_LIGHT;
-		intersectionMaterial.color = spotlightSpheres[0].color;
+		intersectionMaterial.color = vec3(10);
 	}
 	d = SphereIntersect( spotlightSpheres[1].radius, spotlightSpheres[1].position, rayOrigin, rayDirection );
 	if (d < t)
 	{
 		t = d;
 		intersectionMaterial.type = SPOT_LIGHT;
-		intersectionMaterial.color = spotlightSpheres[1].color;
+		intersectionMaterial.color = vec3(10);
 	}
 	d = SphereIntersect( spotlightSpheres[2].radius, spotlightSpheres[2].position, rayOrigin, rayDirection );
 	if (d < t)
 	{
 		t = d;
 		intersectionMaterial.type = SPOT_LIGHT;
-		intersectionMaterial.color = spotlightSpheres[2].color;
+		intersectionMaterial.color = vec3(10);
 	}
 	d = SphereIntersect( spotlightSpheres[3].radius, spotlightSpheres[3].position, rayOrigin, rayDirection );
 	if (d < t)
 	{
 		t = d;
 		intersectionMaterial.type = SPOT_LIGHT;
-		intersectionMaterial.color = spotlightSpheres[3].color;
+		intersectionMaterial.color = vec3(10);
 	}
 	d = SphereIntersect( spotlightSpheres[4].radius, spotlightSpheres[4].position, rayOrigin, rayDirection );
 	if (d < t)
 	{
 		t = d;
 		intersectionMaterial.type = SPOT_LIGHT;
-		intersectionMaterial.color = spotlightSpheres[4].color;
+		intersectionMaterial.color = vec3(10);
 	}
 	d = SphereIntersect( spotlightSpheres[5].radius, spotlightSpheres[5].position, rayOrigin, rayDirection );
 	if (d < t)
 	{
 		t = d;
 		intersectionMaterial.type = SPOT_LIGHT;
-		intersectionMaterial.color = spotlightSpheres[5].color;
+		intersectionMaterial.color = vec3(10);
 	}
 
 	// cube sculpture in center of gallery
@@ -236,7 +217,6 @@ float SceneIntersect( int isShadowRay )
 		intersectionMaterial.color = vec3(1.0, 0.8, 0.5);
 		//intersectionMaterial.metalness = 1.0;
 		intersectionMaterial.roughness = 0.5;
-		intersectionShapeIsClosed = TRUE;
 	}
 
 	// platform box underneath the cube sculpture
@@ -251,7 +231,24 @@ float SceneIntersect( int isShadowRay )
 		intersectionMaterial.color = vec3(1.0, 1.0, 1.0);
 		//intersectionMaterial.metalness = 1.0;
 		intersectionMaterial.roughness = 1.0;
-		intersectionShapeIsClosed = TRUE;
+	}
+
+	// Room (Box Interior)
+	d = BoxInteriorIntersect(boxInteriors[0].minCorner, boxInteriors[0].maxCorner, rayOrigin, rayDirection, normal);
+	if (d < t)
+	{
+		t = d;
+		intersectionNormal = normal;
+		intersectionMaterial = wallMaterial;
+		if (intersectionNormal == vec3(0,1,0))
+			intersectionMaterial.color = vec3(0.001, 0.001, 0.1);
+		else if (intersectionNormal == vec3(0,-1,0))
+			intersectionMaterial.color *= vec3(1,1.5,2);
+		else if (intersectionNormal == vec3(0,0,1) || intersectionNormal == vec3(0,0,-1))
+		{
+			intersectionMaterial.type = PERFECT_MIRROR;
+			intersectionMaterial.color = vec3(0.8);
+		}
 	}
  
 	return t;
@@ -451,42 +448,28 @@ vec3 RayTrace()
 void SetupScene(void)
 //-----------------------------------------------------------------------
 {
-	// rgb values for common metals
-	// Gold: (1.000, 0.766, 0.336) / Aluminum: (0.913, 0.921, 0.925) / Copper: (0.955, 0.637, 0.538) / Silver: (0.972, 0.960, 0.915)
-
-		//struct Material { int type; int isCheckered; vec3 color; vec3 color2; float metalness; float roughness; float IoR; int textureID; };
-	Material wallMaterial = Material(DIFFUSE, FALSE, vec3(0.3, 0.6, 1.0), vec3(0), 0.0, 1.0, 1.4, -1);
-	Material darkGoldMetalMaterial = Material(METAL, FALSE, vec3(1.0, 0.5, 0.3) * 0.1, vec3(0), 1.0, 0.5, 1.4, -1);
-	Material medGoldMetalMaterial = Material(METAL, FALSE, vec3(1.0, 0.4, 0.2) * 0.6, vec3(0), 1.0, 0.5, 1.4, -1);
-	Material lightMetalMaterial = Material(METAL, FALSE, vec3(1.0, 0.7, 0.5), vec3(0), 1.0, 0.5, 1.4, -1);
-	
-	Material redMaterial = Material(DIFFUSE, FALSE, vec3(0.2, 0.01, 0.01), vec3(0), 0.0, 1.0, 1.4, -1);
-	Material greenMaterial = Material(DIFFUSE, FALSE, vec3(0.01, 0.1, 0.01), vec3(0), 0.0, 1.0, 1.4, -1);
-	Material blueMaterial = Material(DIFFUSE, FALSE, vec3(0.01, 0.01, 0.2), vec3(0), 0.0, 1.0, 1.4, -1);
-	Material lightCasingMaterial = Material(DIFFUSE, FALSE, vec3(1.0, 1.6, 2.0), vec3(0), 0.0, 1.0, 1.4, -1);
-
-	boxInteriors[0] = BoxInterior(vec3(-25,0,-52), vec3(20,24,40),vec2(1, 1), wallMaterial);
+	boxInteriors[0] = BoxInterior(vec3(-25,0,-52), vec3(20,24,40),vec2(1, 1));
 
 	float spotlightPower = 10.0;
 	spotlightSpheres[0] = SpotLightSphere(0.6, vec3(-4, 23, -38), normalize(vec3(-1,-0.7,0.3)), vec3(1.0, 1.0, 1.0) * spotlightPower);
-	spheres[0] = Sphere(0.8, spotlightSpheres[0].position + (0.3 * -spotlightSpheres[0].direction), vec2(1, 1), lightCasingMaterial);
+	spheres[0] = Sphere(0.8, spotlightSpheres[0].position + (0.3 * -spotlightSpheres[0].direction), vec2(1, 1));
 	spotlightSpheres[1] = SpotLightSphere(0.6, vec3(-6, 23, -25), normalize(vec3(-1,-0.7,-0.2)), vec3(1.0, 1.0, 1.0) * spotlightPower);
-	spheres[1] = Sphere(0.8, spotlightSpheres[1].position + (0.3 * -spotlightSpheres[1].direction), vec2(1, 1), lightCasingMaterial);
+	spheres[1] = Sphere(0.8, spotlightSpheres[1].position + (0.3 * -spotlightSpheres[1].direction), vec2(1, 1));
 	spotlightSpheres[2] = SpotLightSphere(0.6, vec3(2, 23, -45), normalize(vec3(1,-1.4,0)), vec3(1.0, 1.0, 1.0) * spotlightPower);
-	spheres[2] = Sphere(0.8, spotlightSpheres[2].position + (0.3 * -spotlightSpheres[2].direction), vec2(1, 1), lightCasingMaterial);
+	spheres[2] = Sphere(0.8, spotlightSpheres[2].position + (0.3 * -spotlightSpheres[2].direction), vec2(1, 1));
 	spotlightSpheres[3] = SpotLightSphere(0.6, vec3(7, 23, -40), normalize(vec3(0.5,-1,-1)), vec3(1.0, 1.0, 1.0) * spotlightPower);
-	spheres[3] = Sphere(0.8, spotlightSpheres[3].position + (0.3 * -spotlightSpheres[3].direction), vec2(1, 1), lightCasingMaterial);
+	spheres[3] = Sphere(0.8, spotlightSpheres[3].position + (0.3 * -spotlightSpheres[3].direction), vec2(1, 1));
 	spotlightSpheres[4] = SpotLightSphere(0.6, vec3(-14, 23, -8), normalize(vec3(0.8,-1,0)), vec3(1.0, 1.0, 1.0) * spotlightPower);
-	spheres[4] = Sphere(0.8, spotlightSpheres[4].position + (0.3 * -spotlightSpheres[4].direction), vec2(1, 1), lightCasingMaterial);
+	spheres[4] = Sphere(0.8, spotlightSpheres[4].position + (0.3 * -spotlightSpheres[4].direction), vec2(1, 1));
 	spotlightSpheres[5] = SpotLightSphere(0.6, vec3(8, 22, -9), normalize(vec3(-0.8,-1,0)), vec3(1.0, 1.0, 1.0) * spotlightPower);
-	spheres[5] = Sphere(0.8, spotlightSpheres[5].position + (0.3 * -spotlightSpheres[5].direction), vec2(1, 1), lightCasingMaterial);
+	spheres[5] = Sphere(0.8, spotlightSpheres[5].position + (0.3 * -spotlightSpheres[5].direction), vec2(1, 1));
 
-	spheres[6] = Sphere(4.0, vec3(15, 4, -45), vec2(1, 1), medGoldMetalMaterial);
-	spheres[7] = Sphere(4.0, vec3(-25.5, 12, -34.5),vec2(1, 1), darkGoldMetalMaterial);
-	spheres[8] = Sphere(3.3, vec3(-25, 15, -28), vec2(1, 1), lightMetalMaterial);
-	spheres[9] = Sphere(1.7, vec3(-22.5, 18, -24), vec2(1, 1), redMaterial);
-	spheres[10] = Sphere(1.4, vec3(-22, 11, -25.5), vec2(1, 1), greenMaterial);
-	spheres[11] = Sphere(1.7, vec3(-25.5, 6.5, -22.5), vec2(1, 1), blueMaterial);
+	spheres[6] = Sphere(4.0, vec3(15, 4, -45), vec2(1, 1));
+	spheres[7] = Sphere(4.0, vec3(-25.5, 12, -34.5),vec2(1, 1));
+	spheres[8] = Sphere(3.3, vec3(-25, 15, -28), vec2(1, 1));
+	spheres[9] = Sphere(1.7, vec3(-22.5, 18, -24), vec2(1, 1));
+	spheres[10] = Sphere(1.4, vec3(-22, 11, -25.5), vec2(1, 1));
+	spheres[11] = Sphere(1.7, vec3(-25.5, 6.5, -22.5), vec2(1, 1));
 }
 
 
