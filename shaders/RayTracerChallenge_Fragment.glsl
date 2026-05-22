@@ -16,7 +16,6 @@ vec3 rayOrigin, rayDirection;
 
 struct Material { int type; int isCheckered; vec3 color; vec3 color2; float metalness; float roughness; float IoR; int textureID; };
 struct Box { vec3 minCorner; vec3 maxCorner; vec2 uvScale; Material material; };
-struct UnitBox { vec2 uvScale; Material material; };
 struct UnitSphere { vec2 uvScale; Material material; };
 
 // recorded intersection data:
@@ -27,7 +26,6 @@ int intersectionShapeIsClosed;
 Material intersectionMaterial;
 
 Box lightBoxes[N_LIGHT_BOXES];
-UnitBox boxes[N_BOXES];
 UnitSphere spheres[N_SPHERES];
 
 #include <raytracing_core_functions>
@@ -43,7 +41,11 @@ UnitSphere spheres[N_SPHERES];
 float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 //---------------------------------------------------------------------------------------
 {
-	
+	Material whiteMaterial = Material(CLEARCOAT, FALSE, vec3(0.7, 0.7, 0.7), vec3(0), 0.0, 0.0, 1.4, -1 );
+	Material blueMaterial = Material(CLEARCOAT, FALSE, vec3(0.2, 0.5, 0.7), vec3(0), 0.0, 0.0, 1.4, -1 );
+	Material redMaterial = Material(CLEARCOAT, FALSE, vec3(0.7, 0.1, 0.1), vec3(0), 0.0, 0.0, 1.4, -1 );
+	Material purpleMaterial = Material(CLEARCOAT, FALSE, vec3(0.3, 0.3, 0.5), vec3(0), 0.0, 0.0, 1.4, -1 );
+
 	vec3 rObjOrigin, rObjDirection; 
 	vec3 intersectionPoint, normal;
 	vec3 absPoint;
@@ -81,6 +83,11 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 		intersectionShapeIsClosed = TRUE;
 	}
 
+	// Performance note on code below: On mobile only, fetching the associated material from the list of 17 UnitBox structs 
+	// was slowing down framerate substantially. Through trial and error, I found that setting the intersected material manually, 
+	// based on 'if' statements, fixed the issue and restored mobile performance to full framerate.  Not sure why this was
+	// an issue - maybe it couldn't hold all 17 UnitBox structs in cache as it was going through the loop and the boxes[i].material
+	// data access was too random or deep (or both)?
 	for (int i = 0; i < N_BOXES; i++)
 	{
 		mat4 boxInvMatrix = uBoxesInvMatrices[i];
@@ -91,7 +98,15 @@ float SceneIntersect( int isShadowRay, int sceneUsesDirectionalLight )
 		{
 			t = d;	
 			intersectionNormal = transpose(mat3(boxInvMatrix)) * normal;
-			intersectionMaterial = boxes[i].material;
+			// manually assign materials, rather than fetching them from a list of 17 structs
+			if (i == 1 || i == 6 || i == 10)
+				intersectionMaterial = blueMaterial;
+			else if (i == 2 || i == 7 || i == 11)
+				intersectionMaterial = redMaterial;
+			else if (i == 4 || i == 14)
+				intersectionMaterial = purpleMaterial;
+			else intersectionMaterial = whiteMaterial;
+
 			intersectionShapeIsClosed = TRUE;
 		}
 	}
@@ -387,32 +402,10 @@ void SetupScene(void)
 {
 	float pointLightPower = 1.0;
 	Material pointLightMaterial = Material(POINT_LIGHT, FALSE, vec3(1.0, 1.0, 1.0) * pointLightPower, vec3(0), 0.0, 0.0, 0.0, -1 );
-	Material whiteMaterial = Material(CLEARCOAT, FALSE, vec3(0.7, 0.7, 0.7), vec3(0), 0.0, 0.0, 1.4, -1 );
-	Material blueMaterial = Material(CLEARCOAT, FALSE, vec3(0.2, 0.5, 0.7), vec3(0), 0.0, 0.0, 1.4, -1 );
-	Material redMaterial = Material(CLEARCOAT, FALSE, vec3(0.7, 0.1, 0.1), vec3(0), 0.0, 0.0, 1.4, -1 );
-	Material purpleMaterial = Material(CLEARCOAT, FALSE, vec3(0.3, 0.3, 0.5), vec3(0), 0.0, 0.0, 1.4, -1 );
 	Material glassMaterial = Material(TRANSPARENT, FALSE, vec3(0.4, 0.5, 0.6), vec3(0), 0.0, 0.1, 1.5, -1 );
 	
 	lightBoxes[0] = Box(uLightPosition - vec3(1), uLightPosition + vec3(1), vec2(1, 1), pointLightMaterial);
 
-	boxes[0] = UnitBox(vec2(1, 1), whiteMaterial);
-	boxes[1] = UnitBox(vec2(1, 1), blueMaterial);
-	boxes[2] = UnitBox(vec2(1, 1), redMaterial);
-	boxes[3] = UnitBox(vec2(1, 1), whiteMaterial);
-	boxes[4] = UnitBox(vec2(1, 1), purpleMaterial);
-	boxes[5] = UnitBox(vec2(1, 1), whiteMaterial);
-	boxes[6] = UnitBox(vec2(1, 1), blueMaterial);
-	boxes[7] = UnitBox(vec2(1, 1), redMaterial);
-	boxes[8] = UnitBox(vec2(1, 1), whiteMaterial);
-	boxes[9] = UnitBox(vec2(1, 1), whiteMaterial);
-	boxes[10] = UnitBox(vec2(1, 1), blueMaterial);
-	boxes[11] = UnitBox(vec2(1, 1), redMaterial);
-	boxes[12] = UnitBox(vec2(1, 1), whiteMaterial);
-	boxes[13] = UnitBox(vec2(1, 1), whiteMaterial);
-	boxes[14] = UnitBox(vec2(1, 1), purpleMaterial);
-	boxes[15] = UnitBox(vec2(1, 1), whiteMaterial);
-	boxes[16] = UnitBox(vec2(1, 1), whiteMaterial);
-	
 	spheres[0] = UnitSphere(vec2(2, 1), glassMaterial);
 }
 
